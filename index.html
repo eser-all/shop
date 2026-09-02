@@ -120,7 +120,7 @@
           <!-- Excel/CSV Import Box -->
           <div class="card card-custom p-4 mb-3">
             <h5 class="fw-bold text-dark mb-2"><i class="fa-solid fa-file-csv me-2 text-success"></i>Excel / CSV ফাইল আপলোড</h5>
-            <p class="text-muted small mb-3">আপনার গ্রাহকের radcheck list ফাইলে সরাসরি আপলোড করুন।</p>
+            <p class="text-muted small mb-3">আপনার হেডার ফরম্যাট (Customer ID, Username, Name, Address, Mobile, Expiry, Package, POP, Bill Amount) অনুযায়ী ফাইল আপলোড করুন।</p>
             <div class="upload-box" onclick="document.getElementById('excelFileInput').click()">
               <i class="fa-solid fa-cloud-arrow-up fa-2x text-primary mb-2"></i>
               <div class="fw-bold small">ফাইল নির্বাচন করতে এখানে ক্লিক করুন</div>
@@ -134,7 +134,7 @@
             <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-2 text-primary"></i>নতুন ক্লায়েন্ট এন্ট্রি</h5>
             <form id="clientForm">
               <div class="mb-2">
-                <label class="form-label fw-semibold small">MikroTik Username / ID</label>
+                <label class="form-label fw-semibold small">Customer ID / Username</label>
                 <input type="text" id="clientId" class="form-control form-control-sm" placeholder="যেমন: 41younus88" required>
               </div>
               <div class="mb-2">
@@ -156,8 +156,8 @@
               <div class="mb-3">
                 <label class="form-label fw-semibold small">পেমেন্ট স্ট্যাটাস</label>
                 <select id="paymentStatus" class="form-select form-select-sm" required>
-                  <option value="Paid">Paid (Enabled Line)</option>
-                  <option value="Unpaid">Unpaid (Disabled Line)</option>
+                  <option value="Paid">Paid (Enabled)</option>
+                  <option value="Unpaid">Unpaid (Disabled)</option>
                 </select>
               </div>
               <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
@@ -187,8 +187,8 @@
                 <thead class="table-light">
                   <tr>
                     <th>Username / ID</th>
-                    <th>নাম & ফোন</th>
-                    <th>প্যাকেজ</th>
+                    <th>নাম & তথ্য</th>
+                    <th>প্যাকেজ & POP</th>
                     <th>বিল</th>
                     <th>স্ট্যাটাস</th>
                     <th class="text-center">অ্যাকশন</th>
@@ -285,7 +285,6 @@
   function parseBillAmount(val) {
     if (!val) return 0;
     let strVal = String(val).trim();
-    // তারিখ বা অ-সংখ্যাসূচক টেক্সট এলে তা ফিল্টার করে ০ করে দেয়া
     if (strVal.includes('-') || strVal.includes(':') || strVal.includes('/')) {
       return 0;
     }
@@ -303,7 +302,7 @@
     return mobileStr;
   }
 
-  // Excel/CSV File Read and Batch Upload Function
+  // Excel/CSV File Read Function Matching Your Header Image Format
   function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -333,29 +332,41 @@
         let validCount = 0;
 
         jsonData.forEach(row => {
-          // Firebase Keys cannot contain '.', '#', '$', '[', or ']'
-          let rawUsername = (row['Username'] || row['Customer ID'] || row['id'] || '').toString().trim();
+          // ইমেজের কলাম অনুসারে ফিল্ড ম্যাপিং
+          let rawUsername = (row['Username'] || row['Customer ID'] || row['Customer'] || row['id'] || '').toString().trim();
           if (!rawUsername) return;
 
-          // Clean key for Firebase
-          const username = rawUsername.replace(/[\.\#\$\/\[\]]/g, '_');
+          // Firebase Key এর স্পেশাল ক্যারেক্টার ফিল্টার করা
+          const cleanKey = rawUsername.replace(/[\.\#\$\/\[\]]/g, '_');
 
-          const name = row['Name'] || 'N/A';
-          const mobile = formatMobile(row['Mobile'] || row['Phone']);
-          const pkg = row['Package'] || 'Basic';
-          const billAmount = parseBillAmount(row['Bill Amount']);
+          const customerId = row['Customer ID'] || row['Customer'] || rawUsername;
           const statusRaw = String(row['Status'] || 'Enabled').trim();
           const status = (statusRaw.toLowerCase() === 'enabled') ? 'Paid' : 'Unpaid';
+          const name = row['Name'] || 'N/A';
+          const address = row['Address'] || '';
+          const mobile = formatMobile(row['Mobile'] || row['Phone']);
+          const billCycle = row['Bill Cycle'] || '';
+          const expiry = row['Expiry'] || '';
+          const pkg = row['Package'] || 'Basic';
+          const managerName = row['Manager Name'] || row['Manager'] || '';
+          const pop = row['POP'] || '';
+          const billAmount = parseBillAmount(row['Bill Amount'] || row['Bill Amou']);
+          const createdDate = row['Created Date'] || '';
 
-          updates[`users/${_user.uid}/isp_clients/${username}`] = {
+          updates[`users/${_user.uid}/isp_clients/${cleanKey}`] = {
             id: rawUsername,
+            customerId: customerId,
             name: name,
             phone: mobile,
+            address: address,
+            billCycle: billCycle,
+            expiry: expiry,
             package: pkg,
+            managerName: managerName,
+            pop: pop,
             billAmount: billAmount,
+            createdDate: createdDate,
             status: status,
-            address: row['Address'] || '',
-            pop: row['POP'] || '',
             lastUpdatedMonth: currentMonth,
             updatedAt: Date.now()
           };
@@ -387,6 +398,7 @@
 
     const clientData = {
       id: rawId,
+      customerId: rawId,
       name: document.getElementById('clientName').value.trim(),
       phone: formatMobile(document.getElementById('clientPhone').value.trim()),
       package: document.getElementById('clientPackage').value.trim(),
@@ -437,14 +449,18 @@
         <tr>
           <td>
             <div class="fw-bold text-dark">${item.id}</div>
-            <small class="text-muted">${item.pop || ''}</small>
+            <small class="text-muted">ID: ${item.customerId || item.id}</small>
           </td>
           <td>
             <div class="fw-semibold">${item.name}</div>
-            <small class="text-muted">${item.phone || 'N/A'}</small>
+            <small class="text-muted"><i class="fa-solid fa-phone me-1"></i>${item.phone || 'N/A'}</small>
+            ${item.expiry ? `<br><small class="text-secondary">Exp: ${item.expiry}</small>` : ''}
           </td>
-          <td><span class="badge bg-info text-dark">${item.package}</span></td>
-          <td class="fw-bold">৳ ${amt.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+          <td>
+            <span class="badge bg-info text-dark mb-1">${item.package}</span>
+            ${item.pop ? `<br><small class="text-muted">${item.pop}</small>` : ''}
+          </td>
+          <td class="fw-bold text-primary">৳ ${amt.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
           <td>${statusBadge}</td>
           <td class="text-center">
             <button onclick="toggleStatus('${cleanKey}', '${item.status}')" class="btn btn-sm btn-outline-primary me-1" title="স্ট্যাটাস পরিবর্তন করুন">
@@ -532,7 +548,8 @@
       String(item.name).toLowerCase().includes(q) ||
       String(item.id).toLowerCase().includes(q) ||
       (item.phone && String(item.phone).includes(q)) ||
-      (item.package && String(item.package).toLowerCase().includes(q))
+      (item.package && String(item.package).toLowerCase().includes(q)) ||
+      (item.pop && String(item.pop).toLowerCase().includes(q))
     );
     renderTable(filtered);
   }
@@ -540,15 +557,19 @@
   function exportExcel() {
     if (_cache.length === 0) return alert("ডাটা নেই!");
     const dataToExport = _cache.map(item => ({
-      "Customer ID": item.id,
+      "Customer ID": item.customerId || item.id,
+      "Status": item.status === 'Paid' ? 'Enabled' : 'Disabled',
       "Username": item.id,
       "Name": item.name,
-      "Mobile": item.phone,
-      "Package": item.package,
-      "Bill Amount": item.billAmount,
-      "Status": item.status === 'Paid' ? 'Enabled' : 'Disabled',
       "Address": item.address || '',
-      "POP": item.pop || ''
+      "Mobile": item.phone || '',
+      "Bill Cycle": item.billCycle || '',
+      "Expiry": item.expiry || '',
+      "Package": item.package || '',
+      "Manager Name": item.managerName || '',
+      "POP": item.pop || '',
+      "Bill Amount": item.billAmount,
+      "Created Date": item.createdDate || ''
     }));
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
