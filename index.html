@@ -219,8 +219,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-  const BACKEND_GATEWAY_URL = 'http://localhost:5000/api/mikrotik/toggle-user';
-
   // Firebase Configuration
   const firebaseConfig = {
     apiKey: "AIzaSyAfq988qijqN69xjUiZPRdiXlfN3-Dtngs",
@@ -250,7 +248,7 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
-  // Authentication State Listener
+  // Authentication Listener
   _auth.onAuthStateChanged(async (u) => {
     toggleLoader(true);
     try {
@@ -288,7 +286,11 @@
       );
     } catch (e) {
       errorEl.style.display = 'block';
-      errorEl.innerText = "লগইন তথ্য ভুল হয়েছে!";
+      if (e.code === 'auth/operation-not-allowed') {
+        errorEl.innerText = "Firebase Console-এ Email/Password লগইন অপশনটি Enable করুন!";
+      } else {
+        errorEl.innerText = "লগইন তথ্য ভুল হয়েছে!";
+      }
     } finally {
       toggleLoader(false);
     }
@@ -296,13 +298,13 @@
 
   function logout() { _auth.signOut(); }
 
-  // Excel/CSV File Read and Batch Upload Function
+  // Batch Chunk File Upload for Large Excel Files (3000+ Records)
   function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     document.getElementById('fileNameDisplay').innerText = file.name;
-    toggleLoader(true, "ফাইল থেকে ডাটা রিড করা হচ্ছে...");
+    toggleLoader(true, "ফাইল থেকে ডাটা প্রসেস করা হচ্ছে...");
 
     const reader = new FileReader();
     reader.onload = async function(e) {
@@ -319,38 +321,44 @@
           return;
         }
 
-        toggleLoader(true, `মোট ${jsonData.length} টি ক্লায়েন্টের তথ্য ডাটাবেজে সেভ হচ্ছে...`);
-
-        const updates = {};
         const currentMonth = getCurrentMonthKey();
+        const chunkSize = 1000; // ১,০০০ টি করে ডাটা একসাথে Firebase-এ পাঠানো হবে
+        const totalRows = jsonData.length;
 
-        jsonData.forEach(row => {
-          const username = (row['Username'] || row['Customer ID'] || row['id'] || '').toString().trim();
-          if (!username) return;
+        for (let i = 0; i < totalRows; i += chunkSize) {
+          const chunk = jsonData.slice(i, i + chunkSize);
+          const updates = {};
 
-          const name = row['Name'] || 'N/A';
-          const mobile = (row['Mobile'] || row['Phone'] || '').toString().trim();
-          const pkg = row['Package'] || 'Basic';
-          const billAmount = Number(parseFloat(row['Bill Amount'] || 0).toFixed(2)) || 0;
-          const statusRaw = row['Status'] || 'Enabled';
-          const status = (statusRaw.toLowerCase() === 'enabled') ? 'Paid' : 'Unpaid';
+          chunk.forEach(row => {
+            const username = (row['Username'] || row['Customer ID'] || row['id'] || '').toString().trim();
+            if (!username) return;
 
-          updates[`users/${_user.uid}/isp_clients/${username}`] = {
-            id: username,
-            name: name,
-            phone: mobile,
-            package: pkg,
-            billAmount: billAmount,
-            status: status,
-            address: row['Address'] || '',
-            pop: row['POP'] || '',
-            lastUpdatedMonth: currentMonth,
-            updatedAt: Date.now()
-          };
-        });
+            const name = row['Name'] || 'N/A';
+            const mobile = (row['Mobile'] || row['Phone'] || '').toString().trim();
+            const pkg = row['Package'] || 'Basic';
+            const billAmount = Number(parseFloat(row['Bill Amount'] || 0).toFixed(2)) || 0;
+            const statusRaw = row['Status'] || 'Enabled';
+            const status = (statusRaw.toLowerCase() === 'enabled') ? 'Paid' : 'Unpaid';
 
-        await _db.ref().update(updates);
-        alert(`সফলভাবে ${Object.keys(updates).length} জন ক্লায়েন্টের ডাটা ইমপোর্ট হয়েছে!`);
+            updates[`users/${_user.uid}/isp_clients/${username}`] = {
+              id: username,
+              name: name,
+              phone: mobile,
+              package: pkg,
+              billAmount: billAmount,
+              status: status,
+              address: row['Address'] || '',
+              pop: row['POP'] || '',
+              lastUpdatedMonth: currentMonth,
+              updatedAt: Date.now()
+            };
+          });
+
+          toggleLoader(true, `ডাটা সেভ হচ্ছে: ${Math.min(i + chunkSize, totalRows)} / ${totalRows}...`);
+          await _db.ref().update(updates);
+        }
+
+        alert(`সফলভাবে ${totalRows} জন ক্লায়েন্টের ডাটা Firebase ডাটাবেজে সেভ হয়েছে!`);
 
       } catch (err) {
         alert("ফাইল প্রসেসিং এ সমস্যা হয়েছে: " + err.message);
@@ -405,11 +413,11 @@
     tbody.innerHTML = '';
     let totalPaid = 0, totalUnpaid = 0, expectedBill = 0;
 
-    records.forEach((item) => {
-      expectedBill += item.billAmount;
-      if (item.status === 'Paid') totalPaid += item.billAmount;
-      else totalUnpaid += item.billAmount;
+    // ব্রাউজারের পারফরম্যান্স ঠিক রাখার জন্য পেজিনেশন / প্রথম ২০০ ডাটা সরাসরি রেন্ডার
+    const renderLimit = Math.min(records.length, 200);
 
+    for (let i = 0; i < renderLimit; i++) {
+      const item = records[i];
       const statusBadge = item.status === 'Paid' 
         ? '<span class="badge bg-success">Paid (Enabled)</span>' 
         : '<span class="badge bg-danger">Unpaid (Disabled)</span>';
@@ -438,6 +446,13 @@
         </tr>
       `;
       tbody.innerHTML += row;
+    }
+
+    // সব রেকর্ডের মোট হিসাব গণনা
+    records.forEach((item) => {
+      expectedBill += item.billAmount;
+      if (item.status === 'Paid') totalPaid += item.billAmount;
+      else totalUnpaid += item.billAmount;
     });
 
     document.getElementById('statTotalClients').innerText = records.length;
