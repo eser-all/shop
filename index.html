@@ -178,6 +178,9 @@
                 <button onclick="fetchMikrotikLiveStatus()" class="btn btn-outline-info btn-sm fw-bold">
                   <i class="fa-solid fa-arrows-rotate me-1"></i> MikroTik Sync
                 </button>
+                <button onclick="generateAllBillsManual()" class="btn btn-outline-warning btn-sm fw-bold">
+                  <i class="fa-solid fa-receipt me-1"></i> নতুন মাসের বিল
+                </button>
               </div>
             </div>
 
@@ -205,12 +208,51 @@
   </div>
 </div>
 
+<!-- Edit Client Modal -->
+<div class="modal fade" id="editClientModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-pen me-2"></i>গ্রাহকের তথ্য এডিট করুন</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editClientForm">
+          <input type="hidden" id="editClientId">
+          <div class="mb-2">
+            <label class="form-label fw-semibold small">Username / ID (পরিবর্তনযোগ্য নয়)</label>
+            <input type="text" id="editClientIdDisplay" class="form-control form-control-sm" readonly disabled>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold small">গ্রাহকের নাম</label>
+            <input type="text" id="editClientName" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold small">মোবাইল নম্বর</label>
+            <input type="text" id="editClientPhone" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold small">প্যাকেজ</label>
+            <input type="text" id="editClientPackage" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">মাসিক বিল (৳)</label>
+            <input type="number" id="editBillAmount" class="form-control form-control-sm" min="0" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 fw-bold py-2">আপডেট সেভ করুন</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <footer class="app-footer">
   <div class="container">
     <p class="mb-0 fw-semibold">ISP Billing & MikroTik Live Management System | <span class="text-warning">Developed by Antu</span></p>
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -237,6 +279,11 @@
   let _user = null;
   let _cache = [];
   let _mikrotikStatusMap = {};
+  let editModalInstance = null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    editModalInstance = new bootstrap.Modal(document.getElementById('editClientModal'));
+  });
 
   const toggleLoader = (val, text = "ডাটা প্রসেস হচ্ছে...") => {
     document.getElementById('loaderText').innerText = text;
@@ -295,14 +342,41 @@
 
   function logout() { _auth.signOut(); }
 
-  // Load Firebase Clients Real-time
+  // Load Firebase Clients Real-time & Check Auto Bill Generation for 1st Date
   function loadClients() {
     if (_user) {
       _db.ref(`users/${_user.uid}/isp_clients`).on('value', (snap) => {
         const val = snap.val();
         _cache = val ? Object.values(val) : [];
+        checkAutoBillGen();
         filterData();
       });
+    }
+  }
+
+  // 1st Date Auto Bill Generation Logic
+  async function checkAutoBillGen() {
+    const today = new Date();
+    const currentDate = today.getDate(); // ১ তারিখ কি না চেক করবে
+    const currentMonthKey = getCurrentMonthKey();
+
+    if (currentDate === 1 && _cache.length > 0) {
+      const updates = {};
+      let hasUpdates = false;
+
+      _cache.forEach(item => {
+        if (item.lastUpdatedMonth !== currentMonthKey) {
+          updates[`users/${_user.uid}/isp_clients/${item.id}/status`] = 'Unpaid';
+          updates[`users/${_user.uid}/isp_clients/${item.id}/lastUpdatedMonth`] = currentMonthKey;
+          hasUpdates = true;
+        }
+      });
+
+      if (hasUpdates) {
+        toggleLoader(true, "আজ ১ তারিখ! নতুন মাসের জন্য সব বিল রিলিজ করা হচ্ছে...");
+        await _db.ref().update(updates);
+        toggleLoader(false);
+      }
     }
   }
 
@@ -358,10 +432,16 @@
         ? `<button onclick="payBill('${item.id}')" class="btn btn-sm btn-success me-1" title="বিল পরিশোধ করুন"><i class="fa-solid fa-money-bill-wave me-1"></i>Pay</button>`
         : `<button disabled class="btn btn-sm btn-outline-secondary me-1" title="বিল পরিশোধিত"><i class="fa-solid fa-check"></i></button>`;
 
+      // Single Bill Reset / Generate Option
+      const singleBillGenBtn = `<button onclick="generateSingleBill('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="বিল Unpaid করুন (Single Bill Gen)"><i class="fa-solid fa-rotate-right"></i></button>`;
+
       // Enable / Disable Action Button
       const toggleEnableBtn = isEnabled
         ? `<button onclick="toggleAccount('${item.id}', false)" class="btn btn-sm btn-warning me-1" title="ডিজেবল করুন"><i class="fa-solid fa-ban"></i></button>`
         : `<button onclick="toggleAccount('${item.id}', true)" class="btn btn-sm btn-info text-white me-1" title="ইনেবল করুন"><i class="fa-solid fa-check-circle"></i></button>`;
+
+      // Edit Button
+      const editBtn = `<button onclick="openEditModal('${item.id}')" class="btn btn-sm btn-outline-primary me-1" title="এডিট করুন"><i class="fa-solid fa-pen-to-square"></i></button>`;
 
       const row = `
         <tr>
@@ -381,6 +461,8 @@
           <td class="text-center">
             <div class="d-flex justify-content-center align-items-center">
               ${payButton}
+              ${singleBillGenBtn}
+              ${editBtn}
               ${toggleEnableBtn}
               <button onclick="deleteClient('${item.id}')" class="btn btn-sm btn-outline-danger" title="ডিলিট">
                 <i class="fa-solid fa-trash"></i>
@@ -420,6 +502,79 @@
     }
   }
 
+  // Single Bill Generate (Make Unpaid)
+  async function generateSingleBill(id) {
+    if (!_user) return;
+    if (confirm(`আপনি কি ${id} - এর জন্য বিল নতুন করে রিসেট/জেনারেট করতে চান?`)) {
+      toggleLoader(true, "বিল জেনারেট হচ্ছে...");
+      try {
+        await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
+          status: 'Unpaid',
+          lastUpdatedMonth: getCurrentMonthKey()
+        });
+      } catch (e) { alert("ত্রুটি: " + e.message); } 
+      finally { toggleLoader(false); }
+    }
+  }
+
+  // Manual All Bill Generate for new month
+  async function generateAllBillsManual() {
+    if (!_user || _cache.length === 0) return alert("কোনো ক্লায়েন্ট ডাটা পাওয়া যায়নি!");
+    if (confirm("আপনি কি সকল ক্লায়েন্টের বিল নতুন মাসের জন্য Unpaid করতে চান?")) {
+      toggleLoader(true, "সকল গ্রাহকের বিল জেনারেট করা হচ্ছে...");
+      const updates = {};
+      const currentMonthKey = getCurrentMonthKey();
+      _cache.forEach(item => {
+        updates[`users/${_user.uid}/isp_clients/${item.id}/status`] = 'Unpaid';
+        updates[`users/${_user.uid}/isp_clients/${item.id}/lastUpdatedMonth`] = currentMonthKey;
+      });
+      try {
+        await _db.ref().update(updates);
+        alert("সকল গ্রাহকের বিল জেনারেট সম্পূর্ণ হয়েছে!");
+      } catch (e) { alert("ত্রুটি: " + e.message); } 
+      finally { toggleLoader(false); }
+    }
+  }
+
+  // User Editing Options
+  function openEditModal(id) {
+    const client = _cache.find(c => c.id === id);
+    if (!client) return;
+
+    document.getElementById('editClientId').value = client.id;
+    document.getElementById('editClientIdDisplay').value = client.id;
+    document.getElementById('editClientName').value = client.name || '';
+    document.getElementById('editClientPhone').value = client.phone || '';
+    document.getElementById('editClientPackage').value = client.package || '';
+    document.getElementById('editBillAmount').value = client.billAmount || 0;
+
+    editModalInstance.show();
+  }
+
+  document.getElementById('editClientForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!_user) return;
+    
+    const id = document.getElementById('editClientId').value;
+    const updatedData = {
+      name: document.getElementById('editClientName').value.trim(),
+      phone: document.getElementById('editClientPhone').value.trim(),
+      package: document.getElementById('editClientPackage').value.trim(),
+      billAmount: Number(parseFloat(document.getElementById('editBillAmount').value).toFixed(2)) || 0,
+      updatedAt: Date.now()
+    };
+
+    toggleLoader(true, "ক্লায়েন্টের তথ্য আপডেট করা হচ্ছে...");
+    try {
+      await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update(updatedData);
+      editModalInstance.hide();
+    } catch (err) {
+      alert("ত্রুটি: " + err.message);
+    } finally {
+      toggleLoader(false);
+    }
+  });
+
   // Enable / Disable Account Functionality
   async function toggleAccount(id, enableStatus) {
     if (!_user) return;
@@ -435,7 +590,7 @@
     }
   }
 
-  // Form Submit (Single User)
+  // Form Submit (Single User Add)
   document.getElementById('clientForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!_user) return;
