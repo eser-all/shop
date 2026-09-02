@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>স্মার্ট ISP বিলিং ও ক্লায়েন্ট ম্যানেজমেন্ট</title>
+  <title>স্মার্ট ISP বিলিং ও MikroTik অ্যাক্টিভ ম্যানেজমেন্ট</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -69,8 +69,8 @@
     <div class="header-banner mb-4">
       <div class="container-fluid px-md-4 d-flex justify-content-between align-items-center">
         <div>
-          <h3 class="fw-bold mb-0"><i class="fa-solid fa-wifi me-2"></i>ISP বিলিং পোর্টাল</h3>
-          <p class="mb-0 opacity-75 small">গ্রাহকদের বিলিং ও ইন্টারনেট কানেকশন ম্যানেজমেন্ট</p>
+          <h3 class="fw-bold mb-0"><i class="fa-solid fa-wifi me-2"></i>ISP বিলিং ও MikroTik কন্ট্রোল</h3>
+          <p class="mb-0 opacity-75 small" id="currentMonthLabel">চলতি মাসের বিলিং রেকর্ডস</p>
         </div>
         <div class="d-flex align-items-center gap-2">
           <span id="userDisplayEmail" class="badge bg-light text-dark d-none d-md-inline-block py-2 px-3"></span>
@@ -86,7 +86,7 @@
       <div class="row g-3 mb-4 text-center">
         <div class="col-6 col-lg-3">
           <div class="card card-custom p-3 bg-white stat-card stat-total">
-            <div class="text-muted small fw-bold">মোট গ্রাহক (Total Clients)</div>
+            <div class="text-muted small fw-bold">মোট গ্রাহক</div>
             <h4 class="text-primary fw-bold mt-2 mb-0" id="statTotalClients">0</h4>
           </div>
         </div>
@@ -104,7 +104,7 @@
         </div>
         <div class="col-6 col-lg-3">
           <div class="card card-custom p-3 bg-white stat-card stat-total">
-            <div class="text-muted small fw-bold">চলতি মাসের সম্ভাব্য বিল</div>
+            <div class="text-muted small fw-bold">সম্ভাব্য বিল</div>
             <h4 class="text-dark fw-bold mt-2 mb-0" id="statExpectedBill">৳ 0.00</h4>
           </div>
         </div>
@@ -114,11 +114,11 @@
         <!-- New Client Input Form -->
         <div class="col-lg-4 mb-4">
           <div class="card card-custom p-4">
-            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-2 text-primary"></i>নতুন ক্লায়েন্ট / বিল এন্ট্রি</h5>
+            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-2 text-primary"></i>নতুন ক্লায়েন্ট এন্ট্রি</h5>
             <form id="clientForm">
               <div class="mb-2">
-                <label class="form-label fw-semibold small">ক্লায়েন্ট আইডি/ইউজারনেম</label>
-                <input type="text" id="clientId" class="form-control form-control-sm" placeholder="যেমন: USR-101" required>
+                <label class="form-label fw-semibold small">MikroTik PPP Username / ID</label>
+                <input type="text" id="clientId" class="form-control form-control-sm" placeholder="যেমন: user123" required>
               </div>
               <div class="mb-2">
                 <label class="form-label fw-semibold small">গ্রাহকের নাম</label>
@@ -142,10 +142,10 @@
                 <input type="number" id="billAmount" class="form-control form-control-sm" placeholder="500" min="0" required>
               </div>
               <div class="mb-3">
-                <label class="form-label fw-semibold small">পেমেন্ট স্ট্যাটাস</label>
+                <label class="form-label fw-semibold small">প্রথম মাসের স্ট্যাটাস</label>
                 <select id="paymentStatus" class="form-select form-select-sm" required>
-                  <option value="Paid">Paid (পরিশোধিত)</option>
-                  <option value="Unpaid">Unpaid (বকেয়া)</option>
+                  <option value="Paid">Paid (Active Line)</option>
+                  <option value="Unpaid">Unpaid (Disabled Line)</option>
                 </select>
               </div>
               <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
@@ -160,9 +160,14 @@
           <div class="table-container mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <input type="text" id="searchInput" onkeyup="filterData()" class="form-control form-control-sm shadow-sm" style="width: 220px;" placeholder="🔍 নাম, ফোন বা ID দিয়ে খুঁজুন...">
-              <button onclick="exportExcel()" class="btn btn-outline-success btn-sm fw-bold">
-                <i class="fa-solid fa-file-excel me-1"></i> Excel এক্সপোর্ট
-              </button>
+              <div class="d-flex gap-2">
+                <button onclick="manualMonthlyRenewal()" class="btn btn-outline-primary btn-sm fw-bold">
+                  <i class="fa-solid fa-rotate me-1"></i> মান্থলি রিনেউ
+                </button>
+                <button onclick="exportExcel()" class="btn btn-outline-success btn-sm fw-bold">
+                  <i class="fa-solid fa-file-excel me-1"></i> Excel
+                </button>
+              </div>
             </div>
 
             <div class="table-responsive">
@@ -174,7 +179,7 @@
                     <th>প্যাকেজ</th>
                     <th>বিল</th>
                     <th>স্ট্যাটাস</th>
-                    <th class="text-center">অ্যাকশন</th>
+                    <th class="text-center">MikroTik অ্যাকশন</th>
                   </tr>
                 </thead>
                 <tbody id="tableBody"></tbody>
@@ -189,7 +194,7 @@
 
 <footer class="app-footer">
   <div class="container">
-    <p class="mb-0 fw-semibold">ISP Billing & Management System</p>
+    <p class="mb-0 fw-semibold">ISP Billing & MikroTik Management System</p>
   </div>
 </footer>
 
@@ -198,7 +203,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-  // Firebase Configuration (Same Key Setup)
+  const BACKEND_GATEWAY_URL = 'http://localhost:5000/api/mikrotik/toggle-user';
+
+  // Firebase Configuration
   const _0x99a = ["QUl6YVN5Q2I0ZmtPdGRjODNaUDZmWF9wVlU1cGpXQTBXdmlUTGlJ", "ZXNlci1hbGwtaXNwLmZpcmViYXNlYXBwLmNvbQ==", "aHR0cHM6Ly9lc2VyLWFsbC1pc3AtZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcA==", "ZXNlci1hbGwtaXNw", "ZXNlci1hbGwtaXNwLmZpcmViYXN0b3JhZ2UuYXBw", "MTA5NTMxNDk5NTQ0NA==", "MToxMDk1MzE0OTk1NDQ0OndlYjoxMmFjNDZmYzU4MjMzNTBiZmI4NmEx", "Rz1XQktKTEdNM0hE"];
   const _0x3b = (idx) => atob(_0x99a[idx]);
 
@@ -217,14 +224,20 @@
 
   const toggleLoader = (val) => document.getElementById('loader').style.display = val ? 'flex' : 'none';
 
-  // Auth Listener
-  _auth.onAuthStateChanged((u) => {
+  function getCurrentMonthKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  _auth.onAuthStateChanged(async (u) => {
     toggleLoader(true);
     if (u) {
       _user = u;
       document.getElementById('authSection').style.display = 'none';
       document.getElementById('dashboardSection').style.display = 'block';
       document.getElementById('userDisplayEmail').innerText = _user.email;
+      document.getElementById('currentMonthLabel').innerText = `মাসিক বিলিং সেশন: ${getCurrentMonthKey()}`;
+      await checkAndRunMonthlyRenewal();
       loadClients();
     } else {
       _user = null;
@@ -234,7 +247,6 @@
     toggleLoader(false);
   });
 
-  // Login Form Submission
   document.getElementById('authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     toggleLoader(true);
@@ -254,17 +266,32 @@
     }
   });
 
-  function logout() {
-    _auth.signOut();
+  function logout() { _auth.signOut(); }
+
+  // MikroTik API Gateway Call
+  async function syncWithMikrotik(username, status) {
+    try {
+      const res = await fetch(BACKEND_GATEWAY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, status })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert("MikroTik Warning: " + data.message);
+      }
+    } catch (e) {
+      console.error("MikroTik Gateway Connection Error", e);
+      alert("MikroTik সার্ভারে কানেক্ট করা যায়নি। ব্যাকএন্ড সার্ভার রানিং আছে কিনা চেক করুন।");
+    }
   }
 
-  // Add / Update Client
+  // Client Submit
   document.getElementById('clientForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!_user) return;
 
     toggleLoader(true);
-
     const clientData = {
       id: document.getElementById('clientId').value.trim(),
       name: document.getElementById('clientName').value.trim(),
@@ -272,11 +299,13 @@
       package: document.getElementById('clientPackage').value,
       billAmount: Number(parseFloat(document.getElementById('billAmount').value).toFixed(2)) || 0,
       status: document.getElementById('paymentStatus').value,
+      lastUpdatedMonth: getCurrentMonthKey(),
       updatedAt: Date.now()
     };
 
     try {
       await _db.ref(`users/${_user.uid}/isp_clients/${clientData.id}`).set(clientData);
+      await syncWithMikrotik(clientData.id, clientData.status);
       document.getElementById('clientForm').reset();
     } catch (err) {
       alert("ত্রুটি: " + err.message);
@@ -285,7 +314,6 @@
     }
   });
 
-  // Load Realtime Data
   function loadClients() {
     if (_user) {
       _db.ref(`users/${_user.uid}/isp_clients`).on('value', (snap) => {
@@ -296,40 +324,33 @@
     }
   }
 
-  // Render Table & Calculate Stats
   function renderTable(records) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
-
-    let totalPaid = 0;
-    let totalUnpaid = 0;
-    let expectedBill = 0;
+    let totalPaid = 0, totalUnpaid = 0, expectedBill = 0;
 
     records.forEach((item) => {
       expectedBill += item.billAmount;
-      if (item.status === 'Paid') {
-        totalPaid += item.billAmount;
-      } else {
-        totalUnpaid += item.billAmount;
-      }
+      if (item.status === 'Paid') totalPaid += item.billAmount;
+      else totalUnpaid += item.billAmount;
 
       const statusBadge = item.status === 'Paid' 
-        ? '<span class="badge bg-success">Paid</span>' 
-        : '<span class="badge bg-danger">Unpaid</span>';
+        ? '<span class="badge bg-success">Paid (Active)</span>' 
+        : '<span class="badge bg-danger">Unpaid (Disabled)</span>';
 
       const row = `
         <tr>
           <td>
             <div class="fw-bold text-dark">${item.name}</div>
-            <small class="text-muted">ID: ${item.id}</small>
+            <small class="text-muted">MikroTik ID: ${item.id}</small>
           </td>
           <td>${item.phone}</td>
           <td><span class="badge bg-info text-dark">${item.package}</span></td>
           <td class="fw-bold">৳ ${item.billAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
           <td>${statusBadge}</td>
           <td class="text-center">
-            <button onclick="toggleStatus('${item.id}', '${item.status}')" class="btn btn-sm btn-outline-primary me-1" title="স্ট্যাটাস পরিবর্তন করুন">
-              <i class="fa-solid fa-arrows-rotate"></i>
+            <button onclick="toggleStatus('${item.id}', '${item.status}')" class="btn btn-sm btn-outline-primary me-1" title="স্ট্যাটাস টগল করুন (MikroTik Sync)">
+              <i class="fa-solid fa-power-off"></i>
             </button>
             <button onclick="deleteClient('${item.id}')" class="btn btn-sm btn-outline-danger" title="ডিলিট করুন">
               <i class="fa-solid fa-trash"></i>
@@ -340,20 +361,20 @@
       tbody.innerHTML += row;
     });
 
-    // Update Stats
     document.getElementById('statTotalClients').innerText = records.length;
     document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('statExpectedBill').innerText = `৳ ${expectedBill.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
   }
 
-  // Quick Toggle Status (Paid <-> Unpaid)
+  // Toggle Status and sync with MikroTik
   async function toggleStatus(id, currentStatus) {
     if (!_user) return;
     const newStatus = currentStatus === 'Paid' ? 'Unpaid' : 'Paid';
     toggleLoader(true);
     try {
       await _db.ref(`users/${_user.uid}/isp_clients/${id}/status`).set(newStatus);
+      await syncWithMikrotik(id, newStatus);
     } catch (e) {
       alert("ত্রুটি: " + e.message);
     } finally {
@@ -361,12 +382,12 @@
     }
   }
 
-  // Delete Client
   async function deleteClient(id) {
     if (confirm("আপনি কি নিশ্চিত যে এই ক্লায়েন্টের তথ্য ডিলিট করতে চান?")) {
       toggleLoader(true);
       try {
         await _db.ref(`users/${_user.uid}/isp_clients/${id}`).remove();
+        await syncWithMikrotik(id, 'Unpaid'); // Disable in MikroTik on Delete
       } catch (e) {
         alert("ত্রুটি: " + e.message);
       } finally {
@@ -375,41 +396,68 @@
     }
   }
 
-  // Search Filter
+  async function checkAndRunMonthlyRenewal() {
+    if (!_user) return;
+    const currentMonth = getCurrentMonthKey();
+    const metaRef = _db.ref(`users/${_user.uid}/billing_meta/lastRenewedMonth`);
+    const snap = await metaRef.once('value');
+    if (snap.val() !== currentMonth) {
+      await processMonthlyBatchRenewal(currentMonth);
+    }
+  }
+
+  async function processMonthlyBatchRenewal(currentMonth) {
+    const snap = await _db.ref(`users/${_user.uid}/isp_clients`).once('value');
+    const clients = snap.val();
+    if (clients) {
+      const updates = {};
+      for (const id of Object.keys(clients)) {
+        updates[`users/${_user.uid}/isp_clients/${id}/status`] = 'Unpaid';
+        updates[`users/${_user.uid}/isp_clients/${id}/lastUpdatedMonth`] = currentMonth;
+        await syncWithMikrotik(id, 'Unpaid'); // Auto Disable all lines on month start
+      }
+      updates[`users/${_user.uid}/billing_meta/lastRenewedMonth`] = currentMonth;
+      await _db.ref().update(updates);
+    }
+  }
+
+  async function manualMonthlyRenewal() {
+    if (confirm("নতুন মাসের জন্য সমস্ত ক্লায়েন্টের লাইন Unpaid/Disable করতে চান?")) {
+      toggleLoader(true);
+      try {
+        await processMonthlyBatchRenewal(getCurrentMonthKey());
+        alert("সফলভাবে রিনেউ সম্পন্ন হয়েছে!");
+      } catch (e) { alert("ত্রুটি: " + e.message); } 
+      finally { toggleLoader(false); }
+    }
+  }
+
   function filterData() {
     const q = document.getElementById('searchInput').value.toLowerCase();
     const filtered = _cache.filter(item => 
       item.name.toLowerCase().includes(q) ||
       item.id.toLowerCase().includes(q) ||
-      item.phone.includes(q) ||
-      item.package.toLowerCase().includes(q)
+      item.phone.includes(q)
     );
     renderTable(filtered);
   }
 
-  // Excel Export Function
   function exportExcel() {
-    if (_cache.length === 0) {
-      alert("এক্সপোর্ট করার মতো কোনো ডাটা নেই!");
-      return;
-    }
+    if (_cache.length === 0) return alert("ডাটা নেই!");
     const dataToExport = _cache.map(item => ({
       "Client ID": item.id,
       "Name": item.name,
       "Phone": item.phone,
       "Package": item.package,
       "Bill Amount (BDT)": item.billAmount,
-      "Payment Status": item.status
+      "Status": item.status
     }));
-
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "ISPClients");
-    XLSX.writeFile(workbook, `ISP_Billing_Report_${Date.now()}.xlsx`);
+    XLSX.writeFile(workbook, `ISP_Billing_Report.xlsx`);
   }
 </script>
 
 </body>
 </html>
-
-
