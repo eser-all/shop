@@ -56,7 +56,7 @@
   <div class="row mb-4">
     <div class="col-md-6 mx-auto">
       <div class="input-group">
-        <input type="text" id="searchInput" onkeyup="filterProducts()" class="form-control" placeholder="প্রোডাক্টের নাম দিয়ে খুঁজুন...">
+        <input type="text" id="searchInput" onkeyup="filterProducts()" class="form-control" placeholder="প্রোডাক্টের নাম দিয়ে খুঁজুন...">
         <button class="btn btn-daraz" type="button"><i class="fa-solid fa-magnifying-glass"></i></button>
       </div>
     </div>
@@ -68,7 +68,7 @@
   </div>
 </div>
 
-<!-- Add Product Modal (Manual Image & Description Upload) -->
+<!-- Add Product Modal -->
 <div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -144,8 +144,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-  // Firebase Config Setup
-  const _0x99a = ["QUl6YVN5Q2I0ZmtPdGRjODNaUDZmWF9wVlU1cGpXQTBXdmlUTGlJ", "ZXNlci1hbGwtaXNwLmZpcmViYXNlYXBwLmNvbQ==", "aHR0cHM6Ly9lc2VyLWFsbC1pc3AtZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcA==", "ZXNlci1hbGwtaXNw", "ZXNlci1hbGwtaXNwLmZpcmViYXN0b3JhZ2UuYXBw", "MTA5NTMxNDk5NTQ0NA==", "MToxMDk1MzE0OTk1NDQ0OndlYjoxMmFjNDZmYzU4MjMzNTBiZmI0NmEx", "Rz1XQktKTEdNM0hE"];
+  // Updated Firebase Config Setup
+  const _0x99a = ["QUl6YVN5Q2I0ZmtPdGRjODNaUDZmWF9wVlU1cGpXQTBXdmlUTGlJ", "ZXNlci1hbGwtaXNwLmZpcmViYXNlYXBwLmNvbQ==", "aHR0cHM6Ly9lc2VyLWFsbC1pc3AtZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcA==", "ZXNlci1hbGwtaXNw", "ZXNlci1hbGwtaXNwLmZpcmViYXN0b3JhZ2UuYXBw", "MTA5NTMxNDk5NTQ0NA==", "MToxMDk1MzE0OTk1NDQ0OndlYjoxMmFjNDZmYzU4MjMzNTBiZmI4NmEx", "Rz1XQktKTEdNM0hE"];
   const _0x3b = (idx) => atob(_0x99a[idx]);
 
   const firebaseConfig = {
@@ -162,7 +162,7 @@
 
   const toggleLoader = (val) => document.getElementById('loader').style.display = val ? 'flex' : 'none';
 
-  // 1. Manual Image File to Base64 Converter Function
+  // Base64 File Converter
   const fileToBase64 = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -170,7 +170,7 @@
     reader.onerror = (error) => reject(error);
   });
 
-  // 2. Save Product to Firebase Realtime Database
+  // Save Product to Realtime Database
   document.getElementById('productForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     toggleLoader(true);
@@ -198,7 +198,7 @@
       document.getElementById('productForm').reset();
       const modal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
       modal.hide();
-      alert("প্রোডাক্ট সফলভাবে যুক্ত হয়েছে!");
+      alert("প্রোডাক্ট সফলভাবে যুক্ত হয়েছে!");
     } catch (err) {
       alert("ত্রুটি: " + err.message);
     } finally {
@@ -206,7 +206,7 @@
     }
   });
 
-  // 3. Fetch Products from Firebase
+  // Load Products
   function loadProducts() {
     toggleLoader(true);
     _db.ref('products').on('value', (snap) => {
@@ -217,13 +217,13 @@
     });
   }
 
-  // 4. Render Product Cards (Daraz Style UI)
+  // Render Product Cards
   function renderProducts(items) {
     const grid = document.getElementById('productGrid');
     grid.innerHTML = '';
 
     if (items.length === 0) {
-      grid.innerHTML = `<div class="col-12 text-center py-5"><p class="text-muted">কোন পণ্য পাওয়া যায়নি!</p></div>`;
+      grid.innerHTML = `<div class="col-12 text-center py-5"><p class="text-muted">কোন পণ্য পাওয়া যায়নি!</p></div>`;
       return;
     }
 
@@ -249,7 +249,7 @@
     });
   }
 
-  // 5. Product Details Modal Handler
+  // View Details Modal
   function openDetails(id) {
     const item = productsCache.find(p => p.id === id);
     if (!item) return;
@@ -264,16 +264,16 @@
     modal.show();
   }
 
-  // 6. Simple Cart Logic
+  // Cart Counter Logic
   function addToCart() {
     cartCount++;
     document.getElementById('cartCount').innerText = cartCount;
     const modal = bootstrap.Modal.getInstance(document.getElementById('detailsModal'));
     modal.hide();
-    alert("প্রোডাক্টটি কার্টে যোগ করা হয়েছে!");
+    alert("প্রোডাক্টটি কার্টে যোগ করা হয়েছে!");
   }
 
-  // 7. Search Filter Function
+  // Search Filter
   function filterProducts() {
     const q = document.getElementById('searchInput').value.toLowerCase();
     const filtered = productsCache.filter(item => 
@@ -283,7 +283,6 @@
     renderProducts(filtered);
   }
 
-  // Initialize on Load
   window.onload = loadProducts;
 </script>
 
