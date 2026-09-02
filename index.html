@@ -8,7 +8,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
-  <!-- SheetJS Library for Excel & CSV Parsing -->
+  <!-- SheetJS Library for Excel & CSV Import/Export -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
@@ -215,14 +215,18 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-  // Firebase Configuration
-  const _0x99a = ["QUl6YVN5Q2I0ZmtPdGRjODNaUDZmWF9wVlU1cGpXQTBXdmlUTGlJ", "ZXNlci1hbGwtaXNwLmZpcmViYXNlYXBwLmNvbQ==", "aHR0cHM6Ly9lc2VyLWFsbC1pc3AtZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcA==", "ZXNlci1hbGwtaXNw", "ZXNlci1hbGwtaXNwLmZpcmViYXN0b3JhZ2UuYXBw", "MTA5NTMxNDk5NTQ0NA==", "MToxMDk1MzE0OTk1NDQ0OndlYjoxMmFjNDZmYzU4MjMzNTBiZmI4NmEx", "Rz1XQktKTEdNM0hE"];
-  const _0x3b = (idx) => atob(_0x99a[idx]);
+  const BACKEND_GATEWAY_URL = 'http://localhost:5000/api/mikrotik/toggle-user';
 
+  // Firebase Configuration
   const firebaseConfig = {
-    apiKey: _0x3b(0), authDomain: _0x3b(1), databaseURL: _0x3b(2),
-    projectId: _0x3b(3), storageBucket: _0x3b(4), messagingSenderId: _0x3b(5),
-    appId: _0x3b(6), measurementId: _0x3b(7)
+    apiKey: "AIzaSyAfq988qijqN69xjUiZPRdiXlfN3-Dtngs",
+    authDomain: "isp-billing-92ce2.firebaseapp.com",
+    databaseURL: "https://isp-billing-92ce2-default-rtdb.firebaseio.com",
+    projectId: "isp-billing-92ce2",
+    storageBucket: "isp-billing-92ce2.firebasestorage.app",
+    messagingSenderId: "951649795315",
+    appId: "1:951649795315:web:f9a80ca1520d41b22c0b86",
+    measurementId: "G-FCSWY5X5B8"
   };
 
   firebase.initializeApp(firebaseConfig);
@@ -281,28 +285,6 @@
 
   function logout() { _auth.signOut(); }
 
-  // Safe Number Sanitization Function
-  function parseBillAmount(val) {
-    if (!val) return 0;
-    let strVal = String(val).trim();
-    // তারিখ বা অ-সংখ্যাসূচক টেক্সট এলে তা ফিল্টার করে ০ করে দেয়া
-    if (strVal.includes('-') || strVal.includes(':') || strVal.includes('/')) {
-      return 0;
-    }
-    let parsed = parseFloat(strVal);
-    return isNaN(parsed) ? 0 : parsed;
-  }
-
-  // Safe Mobile Phone Sanitization Function
-  function formatMobile(val) {
-    if (!val) return '';
-    let mobileStr = String(val).trim();
-    if (mobileStr.length === 10 && !mobileStr.startsWith('0')) {
-      mobileStr = '0' + mobileStr;
-    }
-    return mobileStr;
-  }
-
   // Excel/CSV File Read and Batch Upload Function
   function handleFileUpload(event) {
     const file = event.target.files[0];
@@ -326,29 +308,24 @@
           return;
         }
 
-        toggleLoader(true, `মোট ${jsonData.length} টি ক্লায়েন্টের তথ্য ফিল্টার ও ডাটাবেজে সেভ হচ্ছে...`);
+        toggleLoader(true, `মোট ${jsonData.length} টি ক্লায়েন্টের তথ্য ডাটাবেজে সেভ হচ্ছে...`);
 
         const updates = {};
         const currentMonth = getCurrentMonthKey();
-        let validCount = 0;
 
         jsonData.forEach(row => {
-          // Firebase Keys cannot contain '.', '#', '$', '[', or ']'
-          let rawUsername = (row['Username'] || row['Customer ID'] || row['id'] || '').toString().trim();
-          if (!rawUsername) return;
-
-          // Clean key for Firebase
-          const username = rawUsername.replace(/[\.\#\$\/\[\]]/g, '_');
+          const username = (row['Username'] || row['Customer ID'] || row['id'] || '').toString().trim();
+          if (!username) return;
 
           const name = row['Name'] || 'N/A';
-          const mobile = formatMobile(row['Mobile'] || row['Phone']);
+          const mobile = (row['Mobile'] || row['Phone'] || '').toString().trim();
           const pkg = row['Package'] || 'Basic';
-          const billAmount = parseBillAmount(row['Bill Amount']);
-          const statusRaw = String(row['Status'] || 'Enabled').trim();
+          const billAmount = Number(parseFloat(row['Bill Amount'] || 0).toFixed(2)) || 0;
+          const statusRaw = row['Status'] || 'Enabled';
           const status = (statusRaw.toLowerCase() === 'enabled') ? 'Paid' : 'Unpaid';
 
           updates[`users/${_user.uid}/isp_clients/${username}`] = {
-            id: rawUsername,
+            id: username,
             name: name,
             phone: mobile,
             package: pkg,
@@ -359,11 +336,10 @@
             lastUpdatedMonth: currentMonth,
             updatedAt: Date.now()
           };
-          validCount++;
         });
 
         await _db.ref().update(updates);
-        alert(`সফলভাবে ${validCount} জন ক্লায়েন্টের ডাটা ডাটাবেজে ইমপোর্ট হয়েছে!`);
+        alert(`সফলভাবে ${Object.keys(updates).length} জন ক্লায়েন্টের ডাটা ইমপোর্ট হয়েছে!`);
 
       } catch (err) {
         alert("ফাইল প্রসেসিং এ সমস্যা হয়েছে: " + err.message);
@@ -382,22 +358,19 @@
     if (!_user) return;
 
     toggleLoader(true);
-    const rawId = document.getElementById('clientId').value.trim();
-    const cleanId = rawId.replace(/[\.\#\$\/\[\]]/g, '_');
-
     const clientData = {
-      id: rawId,
+      id: document.getElementById('clientId').value.trim(),
       name: document.getElementById('clientName').value.trim(),
-      phone: formatMobile(document.getElementById('clientPhone').value.trim()),
+      phone: document.getElementById('clientPhone').value.trim(),
       package: document.getElementById('clientPackage').value.trim(),
-      billAmount: parseBillAmount(document.getElementById('billAmount').value),
+      billAmount: Number(parseFloat(document.getElementById('billAmount').value).toFixed(2)) || 0,
       status: document.getElementById('paymentStatus').value,
       lastUpdatedMonth: getCurrentMonthKey(),
       updatedAt: Date.now()
     };
 
     try {
-      await _db.ref(`users/${_user.uid}/isp_clients/${cleanId}`).set(clientData);
+      await _db.ref(`users/${_user.uid}/isp_clients/${clientData.id}`).set(clientData);
       document.getElementById('clientForm').reset();
     } catch (err) {
       alert("ত্রুটি: " + err.message);
@@ -422,16 +395,13 @@
     let totalPaid = 0, totalUnpaid = 0, expectedBill = 0;
 
     records.forEach((item) => {
-      const amt = item.billAmount || 0;
-      expectedBill += amt;
-      if (item.status === 'Paid') totalPaid += amt;
-      else totalUnpaid += amt;
+      expectedBill += item.billAmount;
+      if (item.status === 'Paid') totalPaid += item.billAmount;
+      else totalUnpaid += item.billAmount;
 
       const statusBadge = item.status === 'Paid' 
         ? '<span class="badge bg-success">Paid (Enabled)</span>' 
         : '<span class="badge bg-danger">Unpaid (Disabled)</span>';
-
-      const cleanKey = String(item.id).replace(/[\.\#\$\/\[\]]/g, '_');
 
       const row = `
         <tr>
@@ -444,13 +414,13 @@
             <small class="text-muted">${item.phone || 'N/A'}</small>
           </td>
           <td><span class="badge bg-info text-dark">${item.package}</span></td>
-          <td class="fw-bold">৳ ${amt.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+          <td class="fw-bold">৳ ${item.billAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
           <td>${statusBadge}</td>
           <td class="text-center">
-            <button onclick="toggleStatus('${cleanKey}', '${item.status}')" class="btn btn-sm btn-outline-primary me-1" title="স্ট্যাটাস পরিবর্তন করুন">
+            <button onclick="toggleStatus('${item.id}', '${item.status}')" class="btn btn-sm btn-outline-primary me-1" title="স্ট্যাটাস পরিবর্তন করুন">
               <i class="fa-solid fa-arrows-rotate"></i>
             </button>
-            <button onclick="deleteClient('${cleanKey}')" class="btn btn-sm btn-outline-danger" title="ডিলিট করুন">
+            <button onclick="deleteClient('${item.id}')" class="btn btn-sm btn-outline-danger" title="ডিলিট করুন">
               <i class="fa-solid fa-trash"></i>
             </button>
           </td>
@@ -465,12 +435,12 @@
     document.getElementById('statExpectedBill').innerText = `৳ ${expectedBill.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
   }
 
-  async function toggleStatus(cleanId, currentStatus) {
+  async function toggleStatus(id, currentStatus) {
     if (!_user) return;
     const newStatus = currentStatus === 'Paid' ? 'Unpaid' : 'Paid';
     toggleLoader(true);
     try {
-      await _db.ref(`users/${_user.uid}/isp_clients/${cleanId}/status`).set(newStatus);
+      await _db.ref(`users/${_user.uid}/isp_clients/${id}/status`).set(newStatus);
     } catch (e) {
       alert("ত্রুটি: " + e.message);
     } finally {
@@ -478,11 +448,11 @@
     }
   }
 
-  async function deleteClient(cleanId) {
+  async function deleteClient(id) {
     if (confirm("আপনি কি নিশ্চিত যে এই ক্লায়েন্টের তথ্য ডিলিট করতে চান?")) {
       toggleLoader(true);
       try {
-        await _db.ref(`users/${_user.uid}/isp_clients/${cleanId}`).remove();
+        await _db.ref(`users/${_user.uid}/isp_clients/${id}`).remove();
       } catch (e) {
         alert("ত্রুটি: " + e.message);
       } finally {
@@ -506,9 +476,9 @@
     const clients = snap.val();
     if (clients) {
       const updates = {};
-      for (const key of Object.keys(clients)) {
-        updates[`users/${_user.uid}/isp_clients/${key}/status`] = 'Unpaid';
-        updates[`users/${_user.uid}/isp_clients/${key}/lastUpdatedMonth`] = currentMonth;
+      for (const id of Object.keys(clients)) {
+        updates[`users/${_user.uid}/isp_clients/${id}/status`] = 'Unpaid';
+        updates[`users/${_user.uid}/isp_clients/${id}/lastUpdatedMonth`] = currentMonth;
       }
       updates[`users/${_user.uid}/billing_meta/lastRenewedMonth`] = currentMonth;
       await _db.ref().update(updates);
@@ -529,10 +499,10 @@
   function filterData() {
     const q = document.getElementById('searchInput').value.toLowerCase();
     const filtered = _cache.filter(item => 
-      String(item.name).toLowerCase().includes(q) ||
-      String(item.id).toLowerCase().includes(q) ||
-      (item.phone && String(item.phone).includes(q)) ||
-      (item.package && String(item.package).toLowerCase().includes(q))
+      item.name.toLowerCase().includes(q) ||
+      item.id.toLowerCase().includes(q) ||
+      (item.phone && item.phone.includes(q)) ||
+      (item.package && item.package.toLowerCase().includes(q))
     );
     renderTable(filtered);
   }
