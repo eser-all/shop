@@ -1,18 +1,15 @@
+
 <!DOCTYPE html>
 <html lang="bn">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- Permissions Policy Violation সরানোর জন্য Meta Tag -->
   <meta http-equiv="Permissions-Policy" content="unload=(self)">
-
-  <title>স্মার্ট ISP বিলিং ও এক্সেল আপলোড ম্যানেজমেন্ট</title>
+  <title>ISP বিলিং, এক্সেল ও MikroTik লাইভ মনিটরিং সিস্টেম</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
-  <!-- SheetJS Library for Excel & CSV Import/Export -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
@@ -33,12 +30,29 @@
     .stat-total { border-color: #0d6efd; }
     .stat-paid { border-color: #198754; }
     .stat-unpaid { border-color: #dc3545; }
+    .stat-online { border-color: #0dcaf0; }
     .table-container { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .auth-container { max-width: 400px; margin: 60px auto; border-top: 5px solid #0d6efd; }
     .loading-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; color: white; }
     .app-footer { background: var(--primary-gradient); color: white; text-align: center; padding: 12px 0; font-size: 0.9rem; margin-top: auto; }
     .upload-box { border: 2px dashed #0d6efd; border-radius: 10px; padding: 15px; text-align: center; background: #eef5ff; cursor: pointer; transition: 0.3s; }
     .upload-box:hover { background: #dbeaff; }
+    .status-badge { font-size: 0.8rem; padding: 4px 10px; border-radius: 15px; }
+    .pulse-online {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #198754;
+      box-shadow: 0 0 0 rgba(25, 135, 84, 0.4);
+      animation: pulse 1.5s infinite;
+      margin-right: 4px;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); }
+      70% { box-shadow: 0 0 0 6px rgba(25, 135, 84, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+    }
   </style>
 </head>
 <body>
@@ -55,7 +69,7 @@
       <div class="text-center mb-4">
         <i class="fa-solid fa-network-wired fa-3x text-primary mb-2"></i>
         <h4 class="fw-bold">ISP এডমিন লগইন</h4>
-        <p class="text-muted small">বিলিং প্যানেলে প্রবেশ করতে তথ্য দিন</p>
+        <p class="text-muted small">বিলিং ও মাইক্রোটিক প্যানেলে প্রবেশ করুন</p>
       </div>
       <form id="authForm">
         <div class="mb-3">
@@ -77,7 +91,7 @@
     <div class="header-banner mb-4">
       <div class="container-fluid px-md-4 d-flex justify-content-between align-items-center">
         <div>
-          <h3 class="fw-bold mb-0"><i class="fa-solid fa-wifi me-2"></i>ISP বিলিং ও ক্লায়েন্ট ডাটাবেজ</h3>
+          <h3 class="fw-bold mb-0"><i class="fa-solid fa-wifi me-2"></i>ISP বিলিং ও মাইক্রোটিক মনিটরিং</h3>
           <p class="mb-0 opacity-75 small" id="currentMonthLabel">চলতি মাসের বিলিং রেকর্ডস</p>
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -100,40 +114,40 @@
         </div>
         <div class="col-6 col-lg-3">
           <div class="card card-custom p-3 bg-white stat-card stat-paid">
-            <div class="text-muted small fw-bold">মোট আদায় (Total Paid)</div>
+            <div class="text-muted small fw-bold">মোট আদায় (Paid)</div>
             <h4 class="text-success fw-bold mt-2 mb-0" id="statTotalPaid">৳ 0.00</h4>
           </div>
         </div>
         <div class="col-6 col-lg-3">
           <div class="card card-custom p-3 bg-white stat-card stat-unpaid">
-            <div class="text-muted small fw-bold">বকেয়া বিল (Total Unpaid)</div>
+            <div class="text-muted small fw-bold">বকেয়া বিল (Unpaid)</div>
             <h4 class="text-danger fw-bold mt-2 mb-0" id="statTotalUnpaid">৳ 0.00</h4>
           </div>
         </div>
         <div class="col-6 col-lg-3">
-          <div class="card card-custom p-3 bg-white stat-card stat-total">
-            <div class="text-muted small fw-bold">সম্ভাব্য বিল</div>
-            <h4 class="text-dark fw-bold mt-2 mb-0" id="statExpectedBill">৳ 0.00</h4>
+          <div class="card card-custom p-3 bg-white stat-card stat-online">
+            <div class="text-muted small fw-bold">মাইক্রোটিক অনলাইন</div>
+            <h4 class="text-info fw-bold mt-2 mb-0" id="statOnlineCount">0 / 0</h4>
           </div>
         </div>
       </div>
 
       <div class="row">
-        <!-- Input & File Upload Section -->
+        <!-- Sidebar Controls -->
         <div class="col-lg-4 mb-4">
-          <!-- Excel/CSV Import Box -->
+          <!-- Excel Import Card -->
           <div class="card card-custom p-4 mb-3">
             <h5 class="fw-bold text-dark mb-2"><i class="fa-solid fa-file-csv me-2 text-success"></i>Excel / CSV ফাইল আপলোড</h5>
-            <p class="text-muted small mb-3">আপনার গ্রাহকের radcheck list ফাইলে সরাসরি আপলোড করুন।</p>
+            <p class="text-muted small mb-3">নতুন ফাইল আপলোড করলে আগের ডাটা হারাবে না, নতুন ও পুরাতন ডাটা মার্জ হয়ে যাবে।</p>
             <div class="upload-box" onclick="document.getElementById('excelFileInput').click()">
               <i class="fa-solid fa-cloud-arrow-up fa-2x text-primary mb-2"></i>
-              <div class="fw-bold small">ফাইল নির্বাচন করতে এখানে ক্লিক করুন</div>
-              <div class="text-muted small" id="fileNameDisplay">.csv বা .xlsx ফাইল সমর্থন করে</div>
+              <div class="fw-bold small">ফাইল নির্বাচন করতে ক্লিক করুন</div>
+              <div class="text-muted small" id="fileNameDisplay">.csv বা .xlsx ফাইল</div>
             </div>
             <input type="file" id="excelFileInput" accept=".csv, .xlsx, .xls" style="display: none;" onchange="handleFileUpload(event)">
           </div>
 
-          <!-- Single Client Form -->
+          <!-- Add Single Client Form -->
           <div class="card card-custom p-4">
             <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-2 text-primary"></i>নতুন ক্লায়েন্ট এন্ট্রি</h5>
             <form id="clientForm">
@@ -158,27 +172,27 @@
                 <input type="number" id="billAmount" class="form-control form-control-sm" placeholder="630" min="0" required>
               </div>
               <div class="mb-3">
-                <label class="form-label fw-semibold small">পেমেন্ট স্ট্যাটাস</label>
+                <label class="form-label fw-semibold small">বিলিং স্ট্যাটাস</label>
                 <select id="paymentStatus" class="form-select form-select-sm" required>
-                  <option value="Paid">Paid (Enabled Line)</option>
-                  <option value="Unpaid">Unpaid (Disabled Line)</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Unpaid">Unpaid</option>
                 </select>
               </div>
               <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
-                <i class="fa-solid fa-cloud-arrow-up me-1"></i> ক্লায়েন্ট সেভ করুন
+                <i class="fa-solid fa-cloud-arrow-up me-1"></i> সেভ করুন
               </button>
             </form>
           </div>
         </div>
 
-        <!-- Client List Table -->
+        <!-- Table Display Area -->
         <div class="col-lg-8">
           <div class="table-container mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <input type="text" id="searchInput" onkeyup="filterData()" class="form-control form-control-sm shadow-sm" style="width: 240px;" placeholder="🔍 ইউজারনেম, নাম বা ফোন দিয়ে খুঁজুন...">
+              <input type="text" id="searchInput" onkeyup="filterData()" class="form-control form-control-sm shadow-sm" style="width: 240px;" placeholder="🔍 খুঁজুন (Username, Phone)...">
               <div class="d-flex gap-2">
-                <button onclick="manualMonthlyRenewal()" class="btn btn-outline-primary btn-sm fw-bold">
-                  <i class="fa-solid fa-rotate me-1"></i> মান্থলি রিনেউ
+                <button onclick="fetchMikrotikLiveStatus()" class="btn btn-outline-info btn-sm fw-bold">
+                  <i class="fa-solid fa-arrows-rotate me-1"></i> MikroTik Sync
                 </button>
                 <button onclick="exportExcel()" class="btn btn-outline-success btn-sm fw-bold">
                   <i class="fa-solid fa-file-excel me-1"></i> Excel ডাউনলোড
@@ -194,7 +208,8 @@
                     <th>নাম & ফোন</th>
                     <th>প্যাকেজ</th>
                     <th>বিল</th>
-                    <th>স্ট্যাটাস</th>
+                    <th>বিল স্ট্যাটাস</th>
+                    <th>লাইভ নেট</th>
                     <th class="text-center">অ্যাকশন</th>
                   </tr>
                 </thead>
@@ -210,7 +225,7 @@
 
 <footer class="app-footer">
   <div class="container">
-    <p class="mb-0 fw-semibold">ISP Billing & Excel Management System</p>
+    <p class="mb-0 fw-semibold">ISP Billing & MikroTik Live Management System</p>
   </div>
 </footer>
 
@@ -219,6 +234,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
+  const MIKROTIK_API_URL = 'http://localhost:5000/api/mikrotik/users-status';
+
   // Firebase Configuration
   const firebaseConfig = {
     apiKey: "AIzaSyAfq988qijqN69xjUiZPRdiXlfN3-Dtngs",
@@ -237,8 +254,9 @@
 
   let _user = null;
   let _cache = [];
+  let _mikrotikStatusMap = {};
 
-  const toggleLoader = (val, text = "ডাটা প্রসেস হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...") => {
+  const toggleLoader = (val, text = "ডাটা প্রসেস হচ্ছে...") => {
     document.getElementById('loaderText').innerText = text;
     document.getElementById('loader').style.display = val ? 'flex' : 'none';
   };
@@ -248,7 +266,7 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
-  // Authentication Listener
+  // Auth Listener
   _auth.onAuthStateChanged(async (u) => {
     toggleLoader(true);
     try {
@@ -257,17 +275,16 @@
         document.getElementById('authSection').style.display = 'none';
         document.getElementById('dashboardSection').style.display = 'block';
         document.getElementById('userDisplayEmail').innerText = _user.email;
-        document.getElementById('currentMonthLabel').innerText = `মাসিক বিলিং সেশন: ${getCurrentMonthKey()}`;
-        await checkAndRunMonthlyRenewal();
+        document.getElementById('currentMonthLabel').innerText = `মাসিক সেশন: ${getCurrentMonthKey()}`;
         loadClients();
+        fetchMikrotikLiveStatus();
       } else {
         _user = null;
         document.getElementById('authSection').style.display = 'block';
         document.getElementById('dashboardSection').style.display = 'none';
       }
     } catch (err) {
-      console.error("Auth Exception:", err);
-      alert("ডাটাবেজ কানেকশনে সমস্যা হয়েছে: " + err.message);
+      alert("ডাটাবেজ সমস্যা: " + err.message);
     } finally {
       toggleLoader(false);
     }
@@ -286,11 +303,9 @@
       );
     } catch (e) {
       errorEl.style.display = 'block';
-      if (e.code === 'auth/operation-not-allowed') {
-        errorEl.innerText = "Firebase Console-এ Email/Password লগইন অপশনটি Enable করুন!";
-      } else {
-        errorEl.innerText = "লগইন তথ্য ভুল হয়েছে!";
-      }
+      errorEl.innerText = e.code === 'auth/operation-not-allowed' 
+        ? "Firebase Console-এ Email/Password অপশনটি Enable করুন!" 
+        : "লগইন তথ্য ভুল হয়েছে!";
     } finally {
       toggleLoader(false);
     }
@@ -298,31 +313,113 @@
 
   function logout() { _auth.signOut(); }
 
-  // Batch Chunk File Upload for Large Excel Files (3000+ Records)
+  // Load Firebase Clients Real-time
+  function loadClients() {
+    if (_user) {
+      _db.ref(`users/${_user.uid}/isp_clients`).on('value', (snap) => {
+        const val = snap.val();
+        _cache = val ? Object.values(val) : [];
+        filterData();
+      });
+    }
+  }
+
+  // Fetch MikroTik Status
+  async function fetchMikrotikLiveStatus() {
+    try {
+      const res = await fetch(MIKROTIK_API_URL);
+      const result = await res.json();
+      if (result.success) {
+        _mikrotikStatusMap = {};
+        result.data.forEach(item => {
+          _mikrotikStatusMap[item.username] = item;
+        });
+        filterData();
+      }
+    } catch (e) {
+      console.warn("MikroTik Node Server Connection Failed:", e.message);
+    }
+  }
+
+  // Render Table
+  function renderTable(records) {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+    let totalPaid = 0, totalUnpaid = 0;
+
+    const renderLimit = Math.min(records.length, 200);
+
+    for (let i = 0; i < renderLimit; i++) {
+      const item = records[i];
+      const mkData = _mikrotikStatusMap[item.id];
+      const isOnline = mkData && mkData.status === 'Online';
+
+      const billBadge = item.status === 'Paid' 
+        ? '<span class="badge bg-success">Paid</span>' 
+        : '<span class="badge bg-danger">Unpaid</span>';
+
+      const liveBadge = isOnline
+        ? `<span class="badge status-badge bg-success-subtle text-success border border-success"><i class="pulse-online"></i> Online</span>`
+        : `<span class="badge status-badge bg-secondary-subtle text-secondary">Offline</span>`;
+
+      const row = `
+        <tr>
+          <td>
+            <div class="fw-bold text-dark">${item.id}</div>
+            <small class="text-muted">${item.pop || ''}</small>
+          </td>
+          <td>
+            <div class="fw-semibold">${item.name}</div>
+            <small class="text-muted">${item.phone || 'N/A'}</small>
+          </td>
+          <td><span class="badge bg-info text-dark">${item.package}</span></td>
+          <td class="fw-bold">৳ ${item.billAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+          <td>${billBadge}</td>
+          <td>${liveBadge}</td>
+          <td class="text-center">
+            <button onclick="toggleStatus('${item.id}', '${item.status}')" class="btn btn-sm btn-outline-primary me-1" title="স্ট্যাটাস পরিবর্তন">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+            <button onclick="deleteClient('${item.id}')" class="btn btn-sm btn-outline-danger" title="ডিলিট">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+      tbody.innerHTML += row;
+    }
+
+    records.forEach(item => {
+      if (item.status === 'Paid') totalPaid += item.billAmount;
+      else totalUnpaid += item.billAmount;
+    });
+
+    document.getElementById('statTotalClients').innerText = records.length;
+    document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('statOnlineCount').innerText = `${Object.values(_mikrotikStatusMap).filter(u=>u.status==='Online').length} / ${records.length}`;
+  }
+
+  // Upload Large Excel File (MERGE EXISTING DATA USING UPDATE)
   function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     document.getElementById('fileNameDisplay').innerText = file.name;
-    toggleLoader(true, "ফাইল থেকে ডাটা প্রসেস করা হচ্ছে...");
+    toggleLoader(true, "ফাইল ডাটা প্রসেস হচ্ছে...");
 
     const reader = new FileReader();
     reader.onload = async function(e) {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-        if (jsonData.length === 0) {
-          alert("ফাইলের মধ্যে কোনো ডাটা পাওয়া যায়নি!");
-          toggleLoader(false);
-          return;
-        }
+        if (jsonData.length === 0) return alert("ফাইলটি খালি!");
 
         const currentMonth = getCurrentMonthKey();
-        const chunkSize = 1000; // ১,০০০ টি করে ডাটা একসাথে Firebase-এ পাঠানো হবে
+        const chunkSize = 1000;
         const totalRows = jsonData.length;
 
         for (let i = 0; i < totalRows; i += chunkSize) {
@@ -340,6 +437,7 @@
             const statusRaw = row['Status'] || 'Enabled';
             const status = (statusRaw.toLowerCase() === 'enabled') ? 'Paid' : 'Unpaid';
 
+            // Firebase path targeted specifically per user to preserve other users
             updates[`users/${_user.uid}/isp_clients/${username}`] = {
               id: username,
               name: name,
@@ -354,14 +452,15 @@
             };
           });
 
-          toggleLoader(true, `ডাটা সেভ হচ্ছে: ${Math.min(i + chunkSize, totalRows)} / ${totalRows}...`);
+          toggleLoader(true, `মার্জ ও সেভ হচ্ছে: ${Math.min(i + chunkSize, totalRows)} / ${totalRows}...`);
+          
+          // Using update() ensures existing records stay untouched unless overwritten by matching Username
           await _db.ref().update(updates);
         }
 
-        alert(`সফলভাবে ${totalRows} জন ক্লায়েন্টের ডাটা Firebase ডাটাবেজে সেভ হয়েছে!`);
-
+        alert(`সফলভাবে ${totalRows} জন ক্লায়েন্টের ডাটা Firebase-এ যুক্ত (Merge) হয়েছে! আগের ডাটা অক্ষত রয়েছে।`);
       } catch (err) {
-        alert("ফাইল প্রসেসিং এ সমস্যা হয়েছে: " + err.message);
+        alert("ত্রুটি: " + err.message);
       } finally {
         toggleLoader(false);
         document.getElementById('excelFileInput').value = '';
@@ -371,12 +470,12 @@
     reader.readAsArrayBuffer(file);
   }
 
-  // Single Client Form Submit
+  // Form Submit (Single User)
   document.getElementById('clientForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!_user) return;
-
     toggleLoader(true);
+
     const clientData = {
       id: document.getElementById('clientId').value.trim(),
       name: document.getElementById('clientName').value.trim(),
@@ -389,7 +488,7 @@
     };
 
     try {
-      await _db.ref(`users/${_user.uid}/isp_clients/${clientData.id}`).set(clientData);
+      await _db.ref(`users/${_user.uid}/isp_clients/${clientData.id}`).update(clientData);
       document.getElementById('clientForm').reset();
     } catch (err) {
       alert("ত্রুটি: " + err.message);
@@ -398,125 +497,21 @@
     }
   });
 
-  function loadClients() {
-    if (_user) {
-      _db.ref(`users/${_user.uid}/isp_clients`).on('value', (snap) => {
-        const val = snap.val();
-        _cache = val ? Object.values(val) : [];
-        filterData();
-      });
-    }
-  }
-
-  function renderTable(records) {
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '';
-    let totalPaid = 0, totalUnpaid = 0, expectedBill = 0;
-
-    // ব্রাউজারের পারফরম্যান্স ঠিক রাখার জন্য পেজিনেশন / প্রথম ২০০ ডাটা সরাসরি রেন্ডার
-    const renderLimit = Math.min(records.length, 200);
-
-    for (let i = 0; i < renderLimit; i++) {
-      const item = records[i];
-      const statusBadge = item.status === 'Paid' 
-        ? '<span class="badge bg-success">Paid (Enabled)</span>' 
-        : '<span class="badge bg-danger">Unpaid (Disabled)</span>';
-
-      const row = `
-        <tr>
-          <td>
-            <div class="fw-bold text-dark">${item.id}</div>
-            <small class="text-muted">${item.pop || ''}</small>
-          </td>
-          <td>
-            <div class="fw-semibold">${item.name}</div>
-            <small class="text-muted">${item.phone || 'N/A'}</small>
-          </td>
-          <td><span class="badge bg-info text-dark">${item.package}</span></td>
-          <td class="fw-bold">৳ ${item.billAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-          <td>${statusBadge}</td>
-          <td class="text-center">
-            <button onclick="toggleStatus('${item.id}', '${item.status}')" class="btn btn-sm btn-outline-primary me-1" title="স্ট্যাটাস পরিবর্তন করুন">
-              <i class="fa-solid fa-arrows-rotate"></i>
-            </button>
-            <button onclick="deleteClient('${item.id}')" class="btn btn-sm btn-outline-danger" title="ডিলিট করুন">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </td>
-        </tr>
-      `;
-      tbody.innerHTML += row;
-    }
-
-    // সব রেকর্ডের মোট হিসাব গণনা
-    records.forEach((item) => {
-      expectedBill += item.billAmount;
-      if (item.status === 'Paid') totalPaid += item.billAmount;
-      else totalUnpaid += item.billAmount;
-    });
-
-    document.getElementById('statTotalClients').innerText = records.length;
-    document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    document.getElementById('statExpectedBill').innerText = `৳ ${expectedBill.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-  }
-
   async function toggleStatus(id, currentStatus) {
     if (!_user) return;
     const newStatus = currentStatus === 'Paid' ? 'Unpaid' : 'Paid';
     toggleLoader(true);
     try {
-      await _db.ref(`users/${_user.uid}/isp_clients/${id}/status`).set(newStatus);
-    } catch (e) {
-      alert("ত্রুটি: " + e.message);
-    } finally {
-      toggleLoader(false);
-    }
+      await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ status: newStatus });
+    } catch (e) { alert("ত্রুটি: " + e.message); } 
+    finally { toggleLoader(false); }
   }
 
   async function deleteClient(id) {
-    if (confirm("আপনি কি নিশ্চিত যে এই ক্লায়েন্টের তথ্য ডিলিট করতে চান?")) {
+    if (confirm("ক্লায়েন্টের ডাটা ডিলিট করতে চান?")) {
       toggleLoader(true);
       try {
         await _db.ref(`users/${_user.uid}/isp_clients/${id}`).remove();
-      } catch (e) {
-        alert("ত্রুটি: " + e.message);
-      } finally {
-        toggleLoader(false);
-      }
-    }
-  }
-
-  async function checkAndRunMonthlyRenewal() {
-    if (!_user) return;
-    const currentMonth = getCurrentMonthKey();
-    const metaRef = _db.ref(`users/${_user.uid}/billing_meta/lastRenewedMonth`);
-    const snap = await metaRef.once('value');
-    if (snap.val() !== currentMonth) {
-      await processMonthlyBatchRenewal(currentMonth);
-    }
-  }
-
-  async function processMonthlyBatchRenewal(currentMonth) {
-    const snap = await _db.ref(`users/${_user.uid}/isp_clients`).once('value');
-    const clients = snap.val();
-    if (clients) {
-      const updates = {};
-      for (const id of Object.keys(clients)) {
-        updates[`users/${_user.uid}/isp_clients/${id}/status`] = 'Unpaid';
-        updates[`users/${_user.uid}/isp_clients/${id}/lastUpdatedMonth`] = currentMonth;
-      }
-      updates[`users/${_user.uid}/billing_meta/lastRenewedMonth`] = currentMonth;
-      await _db.ref().update(updates);
-    }
-  }
-
-  async function manualMonthlyRenewal() {
-    if (confirm("নতুন মাসের জন্য সমস্ত ক্লায়েন্টের বিল Unpaid করতে চান?")) {
-      toggleLoader(true);
-      try {
-        await processMonthlyBatchRenewal(getCurrentMonthKey());
-        alert("সফলভাবে রিনেউ সম্পন্ন হয়েছে!");
       } catch (e) { alert("ত্রুটি: " + e.message); } 
       finally { toggleLoader(false); }
     }
@@ -527,8 +522,7 @@
     const filtered = _cache.filter(item => 
       item.name.toLowerCase().includes(q) ||
       item.id.toLowerCase().includes(q) ||
-      (item.phone && item.phone.includes(q)) ||
-      (item.package && item.package.toLowerCase().includes(q))
+      (item.phone && item.phone.includes(q))
     );
     renderTable(filtered);
   }
@@ -551,6 +545,8 @@
     XLSX.utils.book_append_sheet(workbook, worksheet, "ISPClients");
     XLSX.writeFile(workbook, `radcheck_export_${getCurrentMonthKey()}.xlsx`);
   }
+
+  setInterval(fetchMikrotikLiveStatus, 15000);
 </script>
 
 </body>
