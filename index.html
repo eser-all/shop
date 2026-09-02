@@ -4,12 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Permissions-Policy" content="unload=(self)">
-  <title>ISP বিলিং, এক্সেল ও MikroTik লাইভ মনিটরিং সিস্টেম</title>
+  <title>ISP বিলিং ও MikroTik লাইভ মনিটরিং সিস্টেম</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
     :root {
@@ -33,9 +32,7 @@
     .table-container { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .auth-container { max-width: 400px; margin: 60px auto; border-top: 5px solid #0d6efd; }
     .loading-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; color: white; }
-    .app-footer { background: var(--primary-gradient); color: white; text-align: center; padding: 12px 0; font-size: 0.9rem; margin-top: auto; }
-    .upload-box { border: 2px dashed #0d6efd; border-radius: 10px; padding: 15px; text-align: center; background: #eef5ff; cursor: pointer; transition: 0.3s; }
-    .upload-box:hover { background: #dbeaff; }
+    .app-footer { background: var(--primary-gradient); color: white; text-align: center; padding: 14px 0; font-size: 0.95rem; margin-top: auto; }
     .status-badge { font-size: 0.8rem; padding: 4px 10px; border-radius: 15px; }
     .pulse-online {
       display: inline-block;
@@ -134,18 +131,6 @@
       <div class="row">
         <!-- Sidebar Controls -->
         <div class="col-lg-4 mb-4">
-          <!-- Excel Import Card -->
-          <div class="card card-custom p-4 mb-3">
-            <h5 class="fw-bold text-dark mb-2"><i class="fa-solid fa-file-csv me-2 text-success"></i>Excel / CSV ফাইল আপলোড</h5>
-            <p class="text-muted small mb-3">নতুন ফাইল আপলোড করলে আগের ডাটা হারাবে না, নতুন ও পুরাতন ডাটা মার্জ হয়ে যাবে।</p>
-            <div class="upload-box" onclick="document.getElementById('excelFileInput').click()">
-              <i class="fa-solid fa-cloud-arrow-up fa-2x text-primary mb-2"></i>
-              <div class="fw-bold small">ফাইল নির্বাচন করতে ক্লিক করুন</div>
-              <div class="text-muted small" id="fileNameDisplay">.csv বা .xlsx ফাইল</div>
-            </div>
-            <input type="file" id="excelFileInput" accept=".csv, .xlsx, .xls" style="display: none;" onchange="handleFileUpload(event)">
-          </div>
-
           <!-- Add Single Client Form -->
           <div class="card card-custom p-4">
             <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-2 text-primary"></i>নতুন ক্লায়েন্ট এন্ট্রি</h5>
@@ -193,9 +178,6 @@
                 <button onclick="fetchMikrotikLiveStatus()" class="btn btn-outline-info btn-sm fw-bold">
                   <i class="fa-solid fa-arrows-rotate me-1"></i> MikroTik Sync
                 </button>
-                <button onclick="exportExcel()" class="btn btn-outline-success btn-sm fw-bold">
-                  <i class="fa-solid fa-file-excel me-1"></i> Excel ডাউনলোড
-                </button>
               </div>
             </div>
 
@@ -225,7 +207,7 @@
 
 <footer class="app-footer">
   <div class="container">
-    <p class="mb-0 fw-semibold">ISP Billing & MikroTik Live Management System</p>
+    <p class="mb-0 fw-semibold">ISP Billing & MikroTik Live Management System | <span class="text-warning">Developed by Antu</span></p>
   </div>
 </footer>
 
@@ -453,74 +435,6 @@
     }
   }
 
-  // Upload Large Excel File (MERGE EXISTING DATA USING UPDATE)
-  function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    document.getElementById('fileNameDisplay').innerText = file.name;
-    toggleLoader(true, "ফাইল ডাটা প্রসেস হচ্ছে...");
-
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(sheet);
-
-        if (jsonData.length === 0) return alert("ফাইলটি খালি!");
-
-        const currentMonth = getCurrentMonthKey();
-        const chunkSize = 1000;
-        const totalRows = jsonData.length;
-
-        for (let i = 0; i < totalRows; i += chunkSize) {
-          const chunk = jsonData.slice(i, i + chunkSize);
-          const updates = {};
-
-          chunk.forEach(row => {
-            const username = (row['Username'] || row['Customer ID'] || row['id'] || '').toString().trim();
-            if (!username) return;
-
-            const name = row['Name'] || 'N/A';
-            const mobile = (row['Mobile'] || row['Phone'] || '').toString().trim();
-            const pkg = row['Package'] || 'Basic';
-            const billAmount = Number(parseFloat(row['Bill Amount'] || 0).toFixed(2)) || 0;
-            const statusRaw = row['Status'] || 'Enabled';
-            const status = (statusRaw.toLowerCase() === 'enabled') ? 'Paid' : 'Unpaid';
-
-            updates[`users/${_user.uid}/isp_clients/${username}`] = {
-              id: username,
-              name: name,
-              phone: mobile,
-              package: pkg,
-              billAmount: billAmount,
-              status: status,
-              enabled: true,
-              address: row['Address'] || '',
-              pop: row['POP'] || '',
-              lastUpdatedMonth: currentMonth,
-              updatedAt: Date.now()
-            };
-          });
-
-          toggleLoader(true, `মার্জ ও সেভ হচ্ছে: ${Math.min(i + chunkSize, totalRows)} / ${totalRows}...`);
-          await _db.ref().update(updates);
-        }
-
-        alert(`সফলভাবে ${totalRows} জন ক্লায়েন্টের ডাটা Firebase-এ যুক্ত (Merge) হয়েছে! আগের ডাটা অক্ষত রয়েছে।`);
-      } catch (err) {
-        alert("ত্রুটি: " + err.message);
-      } finally {
-        toggleLoader(false);
-        document.getElementById('excelFileInput').value = '';
-      }
-    };
-
-    reader.readAsArrayBuffer(file);
-  }
-
   // Form Submit (Single User)
   document.getElementById('clientForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -567,26 +481,6 @@
       (item.phone && item.phone.includes(q))
     );
     renderTable(filtered);
-  }
-
-  function exportExcel() {
-    if (_cache.length === 0) return alert("ডাটা নেই!");
-    const dataToExport = _cache.map(item => ({
-      "Customer ID": item.id,
-      "Username": item.id,
-      "Name": item.name,
-      "Mobile": item.phone,
-      "Package": item.package,
-      "Bill Amount": item.billAmount,
-      "Status": item.status === 'Paid' ? 'Enabled' : 'Disabled',
-      "Account Status": item.enabled !== false ? 'Active' : 'Inactive',
-      "Address": item.address || '',
-      "POP": item.pop || ''
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "ISPClients");
-    XLSX.writeFile(workbook, `radcheck_export_${getCurrentMonthKey()}.xlsx`);
   }
 
   // Auto Refresh MikroTik Status every 15 seconds
