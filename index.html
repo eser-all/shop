@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>স্মার্ট ই-শপ - দরাজ স্টাইল ই-কমার্স</title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body { background-color: #f8f9fa; font-family: 'Hind Siliguri', sans-serif; }
+    .navbar-custom { background-color: #f57224; } /* Daraz Orange Theme */
+    .product-card { border: none; border-radius: 8px; transition: transform 0.2s, box-shadow 0.2s; background: #fff; }
+    .product-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+    .product-img { height: 180px; object-fit: cover; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+    .price-tag { color: #f57224; font-size: 1.25rem; font-weight: bold; }
+    .btn-daraz { background-color: #f57224; color: white; border: none; }
+    .btn-daraz:hover { background-color: #d65a13; color: white; }
+    .loading-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; }
+  </style>
+</head>
+<body>
+
+<div id="loader" class="loading-overlay">
+  <div class="spinner-border text-light" style="width: 3rem; height: 3rem;" role="status"></div>
+</div>
+
+<!-- Header / Navigation -->
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="#"><i class="fa-solid fa-bag-shopping me-2"></i>স্মার্ট ই-শপ</a>
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-light btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addProductModal">
+        <i class="fa-solid fa-plus me-1"></i> নতুন পণ্য যোগ করুন
+      </button>
+      <button class="btn btn-outline-light btn-sm position-relative">
+        <i class="fa-solid fa-cart-shopping"></i> কার্ট
+        <span id="cartCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Main Container -->
+<div class="container my-4">
+  
+  <!-- Banner / Title -->
+  <div class="p-4 mb-4 rounded-3 bg-white shadow-sm border-start border-4 border-warning">
+    <h4 class="fw-bold text-dark mb-1">আমাদের প্রোডাক্ট স্টোর</h4>
+    <p class="text-muted small mb-0">সহজে আপনার শপের ম্যানুয়াল ছবি এবং ডেসক্রিপশনসহ প্রোডাক্ট যোগ করুন ও সেল করুন।</p>
+  </div>
+
+  <!-- Search Filter -->
+  <div class="row mb-4">
+    <div class="col-md-6 mx-auto">
+      <div class="input-group">
+        <input type="text" id="searchInput" onkeyup="filterProducts()" class="form-control" placeholder="প্রোডাক্টের নাম দিয়ে খুঁজুন...">
+        <button class="btn btn-daraz" type="button"><i class="fa-solid fa-magnifying-glass"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Grid -->
+  <div class="row g-3" id="productGrid">
+    <!-- Dynamic Products will be rendered here -->
+  </div>
+</div>
+
+<!-- Add Product Modal (Manual Image & Description Upload) -->
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-box-open me-2 text-warning"></i>নতুন পণ্য যোগ করুন</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="productForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">প্রোডাক্টের নাম</label>
+            <input type="text" id="pName" class="form-control" placeholder="যেমন: Wireless Mouse" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">ক্যাটাগরি</label>
+            <select id="pCategory" class="form-select" required>
+              <option value="Electronics">ইলেকট্রনিক্স</option>
+              <option value="Stationery">স্টেশনারি</option>
+              <option value="Fashion">ফ্যাশন</option>
+              <option value="Others">অন্যান্য</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">মূল্য (৳)</label>
+            <input type="number" id="pPrice" class="form-control" placeholder="0.00" min="0" step="any" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">ম্যানুয়াল ছবি আপলোড (Product Image)</label>
+            <input type="file" id="pImageInput" class="form-control" accept="image/*" required>
+            <small class="text-muted">আপনার ডিভাইস থেকে যেকোনো ছবি নির্বাচন করুন</small>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">বিবরণ (Description)</label>
+            <textarea id="pDesc" class="form-control" rows="3" placeholder="প্রোডাক্টের বৈশিষ্ট্য ও বিবরণ লিখুন..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">বন্ধ করুন</button>
+          <button type="submit" class="btn btn-daraz fw-bold"><i class="fa-solid fa-cloud-arrow-up me-1"></i> সেভ করুন</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Product Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-body p-0">
+        <div class="row g-0">
+          <div class="col-md-6">
+            <img id="detailImg" src="" class="img-fluid w-100 h-100" style="object-fit: cover; min-height: 250px;" alt="">
+          </div>
+          <div class="col-md-6 p-4">
+            <span id="detailCategory" class="badge bg-secondary mb-2"></span>
+            <h4 id="detailTitle" class="fw-bold"></h4>
+            <h3 id="detailPrice" class="price-tag mb-3"></h3>
+            <p class="fw-semibold mb-1">বিবরণ:</p>
+            <p id="detailDesc" class="text-muted small mb-4" style="white-space: pre-line;"></p>
+            <button onclick="addToCart()" class="btn btn-daraz w-100 fw-bold py-2">
+              <i class="fa-solid fa-cart-plus me-1"></i> কার্টে যোগ করুন
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+  // Firebase Config Setup
+  const _0x99a = ["QUl6YVN5Q2I0ZmtPdGRjODNaUDZmWF9wVlU1cGpXQTBXdmlUTGlJ", "ZXNlci1hbGwtaXNwLmZpcmViYXNlYXBwLmNvbQ==", "aHR0cHM6Ly9lc2VyLWFsbC1pc3AtZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcA==", "ZXNlci1hbGwtaXNw", "ZXNlci1hbGwtaXNwLmZpcmViYXN0b3JhZ2UuYXBw", "MTA5NTMxNDk5NTQ0NA==", "MToxMDk1MzE0OTk1NDQ0OndlYjoxMmFjNDZmYzU4MjMzNTBiZmI0NmEx", "Rz1XQktKTEdNM0hE"];
+  const _0x3b = (idx) => atob(_0x99a[idx]);
+
+  const firebaseConfig = {
+    apiKey: _0x3b(0), authDomain: _0x3b(1), databaseURL: _0x3b(2),
+    projectId: _0x3b(3), storageBucket: _0x3b(4), messagingSenderId: _0x3b(5),
+    appId: _0x3b(6), measurementId: _0x3b(7)
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const _db = firebase.database();
+
+  let productsCache = [];
+  let cartCount = 0;
+
+  const toggleLoader = (val) => document.getElementById('loader').style.display = val ? 'flex' : 'none';
+
+  // 1. Manual Image File to Base64 Converter Function
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+  });
+
+  // 2. Save Product to Firebase Realtime Database
+  document.getElementById('productForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    toggleLoader(true);
+
+    try {
+      const fileInput = document.getElementById('pImageInput');
+      let imageBase64 = "https://via.placeholder.com/300x200?text=No+Image";
+
+      if (fileInput.files.length > 0) {
+        imageBase64 = await fileToBase64(fileInput.files[0]);
+      }
+
+      const newProduct = {
+        id: "PRD_" + Date.now(),
+        name: document.getElementById('pName').value,
+        category: document.getElementById('pCategory').value,
+        price: Number(parseFloat(document.getElementById('pPrice').value).toFixed(2)) || 0,
+        description: document.getElementById('pDesc').value,
+        image: imageBase64,
+        timestamp: Date.now()
+      };
+
+      await _db.ref(`products/${newProduct.id}`).set(newProduct);
+      
+      document.getElementById('productForm').reset();
+      const modal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
+      modal.hide();
+      alert("প্রোডাক্ট সফলভাবে যুক্ত হয়েছে!");
+    } catch (err) {
+      alert("ত্রুটি: " + err.message);
+    } finally {
+      toggleLoader(false);
+    }
+  });
+
+  // 3. Fetch Products from Firebase
+  function loadProducts() {
+    toggleLoader(true);
+    _db.ref('products').on('value', (snap) => {
+      const val = snap.val();
+      productsCache = val ? Object.values(val).sort((a,b) => b.timestamp - a.timestamp) : [];
+      renderProducts(productsCache);
+      toggleLoader(false);
+    });
+  }
+
+  // 4. Render Product Cards (Daraz Style UI)
+  function renderProducts(items) {
+    const grid = document.getElementById('productGrid');
+    grid.innerHTML = '';
+
+    if (items.length === 0) {
+      grid.innerHTML = `<div class="col-12 text-center py-5"><p class="text-muted">কোন পণ্য পাওয়া যায়নি!</p></div>`;
+      return;
+    }
+
+    items.forEach(item => {
+      const cardHtml = `
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card product-card h-100">
+            <img src="${item.image}" class="card-img-top product-img" alt="${item.name}">
+            <div class="card-body p-3 d-flex flex-column justify-content-between">
+              <div>
+                <span class="badge bg-light text-dark mb-1">${item.category}</span>
+                <h6 class="card-title text-truncate fw-bold mb-1">${item.name}</h6>
+                <p class="price-tag mb-2">৳ ${item.price.toLocaleString('bn-BD')}</p>
+              </div>
+              <div class="d-grid gap-1">
+                <button onclick="openDetails('${item.id}')" class="btn btn-outline-secondary btn-sm fw-bold">বিস্তারিত দেখুন</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      grid.innerHTML += cardHtml;
+    });
+  }
+
+  // 5. Product Details Modal Handler
+  function openDetails(id) {
+    const item = productsCache.find(p => p.id === id);
+    if (!item) return;
+
+    document.getElementById('detailImg').src = item.image;
+    document.getElementById('detailCategory').innerText = item.category;
+    document.getElementById('detailTitle').innerText = item.name;
+    document.getElementById('detailPrice').innerText = `৳ ${item.price.toLocaleString('bn-BD')}`;
+    document.getElementById('detailDesc').innerText = item.description;
+
+    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    modal.show();
+  }
+
+  // 6. Simple Cart Logic
+  function addToCart() {
+    cartCount++;
+    document.getElementById('cartCount').innerText = cartCount;
+    const modal = bootstrap.Modal.getInstance(document.getElementById('detailsModal'));
+    modal.hide();
+    alert("প্রোডাক্টটি কার্টে যোগ করা হয়েছে!");
+  }
+
+  // 7. Search Filter Function
+  function filterProducts() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = productsCache.filter(item => 
+      item.name.toLowerCase().includes(q) || 
+      item.category.toLowerCase().includes(q)
+    );
+    renderProducts(filtered);
+  }
+
+  // Initialize on Load
+  window.onload = loadProducts;
+</script>
+
+</body>
+</html>
