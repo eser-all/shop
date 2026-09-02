@@ -1,215 +1,3 @@
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>স্মার্ট ISP বিলিং ও এক্সেল আপলোড ম্যানেজমেন্ট</title>
-  
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
-  <!-- SheetJS Library for Excel & CSV Import/Export -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <style>
-    :root {
-      --primary-gradient: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-    }
-    body { 
-      background-color: #f4f7f6; 
-      font-family: 'Hind Siliguri', sans-serif; 
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    .content-wrapper { flex: 1; }
-    .header-banner { background: var(--primary-gradient); color: white; padding: 20px 0; border-radius: 0 0 20px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
-    .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .stat-card { border-left: 5px solid; }
-    .stat-total { border-color: #0d6efd; }
-    .stat-paid { border-color: #198754; }
-    .stat-unpaid { border-color: #dc3545; }
-    .table-container { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .auth-container { max-width: 400px; margin: 60px auto; border-top: 5px solid #0d6efd; }
-    .loading-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; color: white; }
-    .app-footer { background: var(--primary-gradient); color: white; text-align: center; padding: 12px 0; font-size: 0.9rem; margin-top: auto; }
-    .upload-box { border: 2px dashed #0d6efd; border-radius: 10px; padding: 15px; text-align: center; background: #eef5ff; cursor: pointer; transition: 0.3s; }
-    .upload-box:hover { background: #dbeaff; }
-  </style>
-</head>
-<body>
-
-<div id="loader" class="loading-overlay">
-  <div class="spinner-border text-light mb-2" style="width: 3rem; height: 3rem;" role="status"></div>
-  <h6 id="loaderText" class="fw-bold">ডাটা প্রসেস হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...</h6>
-</div>
-
-<div class="content-wrapper">
-  <!-- Auth Section -->
-  <div id="authSection" class="container">
-    <div class="card card-custom p-4 auth-container bg-white">
-      <div class="text-center mb-4">
-        <i class="fa-solid fa-network-wired fa-3x text-primary mb-2"></i>
-        <h4 class="fw-bold">ISP এডমিন লগইন</h4>
-        <p class="text-muted small">বিলিং প্যানেলে প্রবেশ করতে তথ্য দিন</p>
-      </div>
-      <form id="authForm">
-        <div class="mb-3">
-          <label class="form-label fw-semibold">ইমেইল এড্রেস</label>
-          <input type="email" id="authEmail" class="form-control" placeholder="admin@isp.com" required>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">পাসওয়ার্ড</label>
-          <input type="password" id="authPassword" class="form-control" placeholder="••••••••" required>
-        </div>
-        <div id="authError" class="alert alert-danger py-2 small mb-3 text-center" style="display: none;"></div>
-        <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">প্রবেশ করুন</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Dashboard Section -->
-  <div id="dashboardSection" style="display: none;">
-    <div class="header-banner mb-4">
-      <div class="container-fluid px-md-4 d-flex justify-content-between align-items-center">
-        <div>
-          <h3 class="fw-bold mb-0"><i class="fa-solid fa-wifi me-2"></i>ISP বিলিং ও ক্লায়েন্ট ডাটাবেজ</h3>
-          <p class="mb-0 opacity-75 small" id="currentMonthLabel">চলতি মাসের বিলিং রেকর্ডস</p>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <span id="userDisplayEmail" class="badge bg-light text-dark d-none d-md-inline-block py-2 px-3"></span>
-          <button onclick="logout()" class="btn btn-outline-light btn-sm fw-bold">
-            <i class="fa-solid fa-power-off me-1"></i> লগআউট
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="container-fluid px-md-4">
-      <!-- Summary Cards -->
-      <div class="row g-3 mb-4 text-center">
-        <div class="col-6 col-lg-3">
-          <div class="card card-custom p-3 bg-white stat-card stat-total">
-            <div class="text-muted small fw-bold">মোট গ্রাহক</div>
-            <h4 class="text-primary fw-bold mt-2 mb-0" id="statTotalClients">0</h4>
-          </div>
-        </div>
-        <div class="col-6 col-lg-3">
-          <div class="card card-custom p-3 bg-white stat-card stat-paid">
-            <div class="text-muted small fw-bold">মোট আদায় (Total Paid)</div>
-            <h4 class="text-success fw-bold mt-2 mb-0" id="statTotalPaid">৳ 0.00</h4>
-          </div>
-        </div>
-        <div class="col-6 col-lg-3">
-          <div class="card card-custom p-3 bg-white stat-card stat-unpaid">
-            <div class="text-muted small fw-bold">বকেয়া বিল (Total Unpaid)</div>
-            <h4 class="text-danger fw-bold mt-2 mb-0" id="statTotalUnpaid">৳ 0.00</h4>
-          </div>
-        </div>
-        <div class="col-6 col-lg-3">
-          <div class="card card-custom p-3 bg-white stat-card stat-total">
-            <div class="text-muted small fw-bold">সম্ভাব্য বিল</div>
-            <h4 class="text-dark fw-bold mt-2 mb-0" id="statExpectedBill">৳ 0.00</h4>
-          </div>
-        </div>
-      </div>
-
-      <div class="row">
-        <!-- Input & File Upload Section -->
-        <div class="col-lg-4 mb-4">
-          <!-- Excel/CSV Import Box -->
-          <div class="card card-custom p-4 mb-3">
-            <h5 class="fw-bold text-dark mb-2"><i class="fa-solid fa-file-csv me-2 text-success"></i>Excel / CSV ফাইল আপলোড</h5>
-            <p class="text-muted small mb-3">আপনার গ্রাহকের radcheck list ফাইলে সরাসরি আপলোড করুন।</p>
-            <div class="upload-box" onclick="document.getElementById('excelFileInput').click()">
-              <i class="fa-solid fa-cloud-arrow-up fa-2x text-primary mb-2"></i>
-              <div class="fw-bold small">ফাইল নির্বাচন করতে এখানে ক্লিক করুন</div>
-              <div class="text-muted small" id="fileNameDisplay">.csv বা .xlsx ফাইল সমর্থন করে</div>
-            </div>
-            <input type="file" id="excelFileInput" accept=".csv, .xlsx, .xls" style="display: none;" onchange="handleFileUpload(event)">
-          </div>
-
-          <!-- Single Client Form -->
-          <div class="card card-custom p-4">
-            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-2 text-primary"></i>নতুন ক্লায়েন্ট এন্ট্রি</h5>
-            <form id="clientForm">
-              <div class="mb-2">
-                <label class="form-label fw-semibold small">MikroTik Username / ID</label>
-                <input type="text" id="clientId" class="form-control form-control-sm" placeholder="যেমন: 41younus88" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label fw-semibold small">গ্রাহকের নাম</label>
-                <input type="text" id="clientName" class="form-control form-control-sm" placeholder="যেমন: Younus" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label fw-semibold small">মোবাইল নম্বর</label>
-                <input type="text" id="clientPhone" class="form-control form-control-sm" placeholder="01920060010" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label fw-semibold small">প্যাকেজ (Package)</label>
-                <input type="text" id="clientPackage" class="form-control form-control-sm" placeholder="যেমন: SAM_630TK_I_Vat" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label fw-semibold small">মাসিক বিল (৳)</label>
-                <input type="number" id="billAmount" class="form-control form-control-sm" placeholder="630" min="0" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label fw-semibold small">পেমেন্ট স্ট্যাটাস</label>
-                <select id="paymentStatus" class="form-select form-select-sm" required>
-                  <option value="Paid">Paid (Enabled Line)</option>
-                  <option value="Unpaid">Unpaid (Disabled Line)</option>
-                </select>
-              </div>
-              <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
-                <i class="fa-solid fa-cloud-arrow-up me-1"></i> ক্লায়েন্ট সেভ করুন
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <!-- Client List Table -->
-        <div class="col-lg-8">
-          <div class="table-container mb-4">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <input type="text" id="searchInput" onkeyup="filterData()" class="form-control form-control-sm shadow-sm" style="width: 240px;" placeholder="🔍 ইউজারনেম, নাম বা ফোন দিয়ে খুঁজুন...">
-              <div class="d-flex gap-2">
-                <button onclick="manualMonthlyRenewal()" class="btn btn-outline-primary btn-sm fw-bold">
-                  <i class="fa-solid fa-rotate me-1"></i> মান্থলি রিনেউ
-                </button>
-                <button onclick="exportExcel()" class="btn btn-outline-success btn-sm fw-bold">
-                  <i class="fa-solid fa-file-excel me-1"></i> Excel ডাউনলোড
-                </button>
-              </div>
-            </div>
-
-            <div class="table-responsive">
-              <table class="table table-hover align-middle" id="clientTable">
-                <thead class="table-light">
-                  <tr>
-                    <th>Username / ID</th>
-                    <th>নাম & ফোন</th>
-                    <th>প্যাকেজ</th>
-                    <th>বিল</th>
-                    <th>স্ট্যাটাস</th>
-                    <th class="text-center">অ্যাকশন</th>
-                  </tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<footer class="app-footer">
-  <div class="container">
-    <p class="mb-0 fw-semibold">ISP Billing & Excel Management System</p>
-  </div>
-</footer>
-
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -221,7 +9,7 @@
   const firebaseConfig = {
     apiKey: "AIzaSyAfq988qijqN69xjUiZPRdiXlfN3-Dtngs",
     authDomain: "isp-billing-92ce2.firebaseapp.com",
-    databaseURL: "https://isp-billing-92ce2-default-rtdb.firebaseio.com",
+    databaseURL: "https://isp-billing-92ce2-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "isp-billing-92ce2",
     storageBucket: "isp-billing-92ce2.firebasestorage.app",
     messagingSenderId: "951649795315",
@@ -246,22 +34,29 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
+  // Updated Authentication State Listener with Error Handling
   _auth.onAuthStateChanged(async (u) => {
     toggleLoader(true);
-    if (u) {
-      _user = u;
-      document.getElementById('authSection').style.display = 'none';
-      document.getElementById('dashboardSection').style.display = 'block';
-      document.getElementById('userDisplayEmail').innerText = _user.email;
-      document.getElementById('currentMonthLabel').innerText = `মাসিক বিলিং সেশন: ${getCurrentMonthKey()}`;
-      await checkAndRunMonthlyRenewal();
-      loadClients();
-    } else {
-      _user = null;
-      document.getElementById('authSection').style.display = 'block';
-      document.getElementById('dashboardSection').style.display = 'none';
+    try {
+      if (u) {
+        _user = u;
+        document.getElementById('authSection').style.display = 'none';
+        document.getElementById('dashboardSection').style.display = 'block';
+        document.getElementById('userDisplayEmail').innerText = _user.email;
+        document.getElementById('currentMonthLabel').innerText = `মাসিক বিলিং সেশন: ${getCurrentMonthKey()}`;
+        await checkAndRunMonthlyRenewal();
+        loadClients();
+      } else {
+        _user = null;
+        document.getElementById('authSection').style.display = 'block';
+        document.getElementById('dashboardSection').style.display = 'none';
+      }
+    } catch (err) {
+      console.error("Auth Exception:", err);
+      alert("ডাটাবেজ কানেকশনে সমস্যা হয়েছে: " + err.message);
+    } finally {
+      toggleLoader(false);
     }
-    toggleLoader(false);
   });
 
   document.getElementById('authForm').addEventListener('submit', async (e) => {
@@ -526,6 +321,3 @@
     XLSX.writeFile(workbook, `radcheck_export_${getCurrentMonthKey()}.xlsx`);
   }
 </script>
-
-</body>
-</html>
