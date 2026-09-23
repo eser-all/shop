@@ -24,7 +24,8 @@
     .content-wrapper { flex: 1; }
     .header-banner { background: var(--primary-gradient); color: white; padding: 20px 0; border-radius: 0 0 20px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
     .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .stat-card { border-left: 5px solid; }
+    .stat-card { border-left: 5px solid; cursor: pointer; transition: transform 0.2s; }
+    .stat-card:hover { transform: translateY(-3px); }
     .stat-total { border-color: #0d6efd; }
     .stat-paid { border-color: #198754; }
     .stat-unpaid { border-color: #dc3545; }
@@ -102,19 +103,19 @@
     <div class="container-fluid px-md-4">
       <!-- Summary Cards -->
       <div class="row g-3 mb-4 text-center">
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-lg-3" onclick="showAllClients()">
           <div class="card card-custom p-3 bg-white stat-card stat-total">
             <div class="text-muted small fw-bold">মোট গ্রাহক</div>
             <h4 class="text-primary fw-bold mt-2 mb-0" id="statTotalClients">0</h4>
           </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-lg-3" onclick="filterByStatus('Paid')">
           <div class="card card-custom p-3 bg-white stat-card stat-paid">
             <div class="text-muted small fw-bold">মোট আদায় (Paid)</div>
             <h4 class="text-success fw-bold mt-2 mb-0" id="statTotalPaid">৳ 0.00</h4>
           </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-lg-3" onclick="filterByStatus('Unpaid')">
           <div class="card card-custom p-3 bg-white stat-card stat-unpaid">
             <div class="text-muted small fw-bold">বকেয়া বিল (Unpaid)</div>
             <h4 class="text-danger fw-bold mt-2 mb-0" id="statTotalUnpaid">৳ 0.00</h4>
@@ -129,7 +130,7 @@
       </div>
 
       <div class="row">
-        <!-- Sidebar Controls (ছোট করা হয়েছে: col-lg-3) -->
+        <!-- Sidebar Controls -->
         <div class="col-lg-3 mb-4">
           <!-- Add Single Client Form -->
           <div class="card card-custom p-3">
@@ -169,23 +170,47 @@
           </div>
         </div>
 
-        <!-- Table Display Area (বড় করা হয়েছে: col-lg-9) -->
+        <!-- Table Display Area -->
         <div class="col-lg-9">
           <div class="table-container mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <input type="text" id="searchInput" onkeyup="filterData()" class="form-control form-control-sm shadow-sm" style="width: 250px;" placeholder="🔍 খুঁজুন (Username, Phone, Name)...">
+              <div class="d-flex align-items-center gap-2">
+                <!-- ⚡ ফাস্ট সার্চ অপ্টিমাইজেশন (Debounce input) -->
+                <input type="text" id="searchInput" oninput="debouncedFilter()" class="form-control form-control-sm shadow-sm" style="width: 230px;" placeholder="🔍 ইউজার ID / ফোন খুঁজুন...">
+                
+                <!-- 📋 সব কাস্টমার অপশন -->
+                <button onclick="showAllClients()" class="btn btn-sm btn-outline-secondary fw-bold" title="সব গ্রাহক একসাথে দেখুন">
+                  <i class="fa-solid fa-users me-1"></i> সব কাস্টমার
+                </button>
+              </div>
+
               <div class="d-flex gap-2 flex-wrap">
-                <!-- WhatsApp Bulk Button -->
+                <!-- 📊 ডাউনলোড অপশনসমূহ -->
+                <div class="dropdown">
+                  <button class="btn btn-outline-dark btn-sm fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-solid fa-file-excel me-1 text-success"></i> শিট ডাউনলোড
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item fw-semibold text-success" onclick="downloadCSV('Paid')"><i class="fa-solid fa-circle-check me-2"></i>Paid গ্রাহক ডাউনলোড</a></li>
+                    <li><a class="dropdown-item fw-semibold text-danger" onclick="downloadCSV('Unpaid')"><i class="fa-solid fa-circle-xmark me-2"></i>Unpaid গ্রাহক ডাউনলোড</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item fw-semibold" onclick="downloadCSV('All')"><i class="fa-solid fa-list me-2"></i>সকল গ্রাহক ডাউনলোড</a></li>
+                  </ul>
+                </div>
+
                 <button onclick="sendBulkWhatsApp()" class="btn btn-success btn-sm fw-bold">
-                  <i class="fa-brands fa-whatsapp me-1"></i> সবাইকে WhatsApp নোটিশ
+                  <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp
                 </button>
                 <button onclick="fetchMikrotikLiveStatus()" class="btn btn-outline-info btn-sm fw-bold">
                   <i class="fa-solid fa-arrows-rotate me-1"></i> Sync
                 </button>
-                <button onclick="generateAllBillsManual()" class="btn btn-outline-warning btn-sm fw-bold">
-                  <i class="fa-solid fa-receipt me-1"></i> নতুন বিল
-                </button>
               </div>
+            </div>
+
+            <!-- ফিল্টার স্ট্যাটাস নোটিশ -->
+            <div id="filterNotice" class="alert alert-info py-1 px-3 small d-flex justify-content-between align-items-center mb-2" style="display: none;">
+              <span id="filterNoticeText"></span>
+              <button onclick="showDefaultTen()" class="btn btn-sm btn-link p-0 text-decoration-none">ডিফল্ট ১০ জন দেখুন</button>
             </div>
 
             <div class="table-responsive">
@@ -285,6 +310,8 @@
   let _cache = [];
   let _mikrotikStatusMap = {};
   let editModalInstance = null;
+  let displayLimit = 10; // 🔹 প্রথম পেজে ১০ জন দেখাবে
+  let filterTimeout = null;
 
   document.addEventListener('DOMContentLoaded', () => {
     editModalInstance = new bootstrap.Modal(document.getElementById('editClientModal'));
@@ -347,7 +374,7 @@
 
   function logout() { _auth.signOut(); }
 
-  // Load Firebase Clients Real-time & Check Auto Bill Generation for 1st Date
+  // Load Firebase Clients
   function loadClients() {
     if (_user) {
       _db.ref(`users/${_user.uid}/isp_clients`).on('value', (snap) => {
@@ -359,7 +386,7 @@
     }
   }
 
-  // 1st Date Auto Bill Generation Logic
+  // 1st Date Auto Bill Generation
   async function checkAutoBillGen() {
     const today = new Date();
     const currentDate = today.getDate();
@@ -404,15 +431,71 @@
     }
   }
 
+  // ⚡ Debouncing for Super-fast Searching
+  function debouncedFilter() {
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => {
+      filterData();
+    }, 250); 
+  }
+
+  // Filter Data (Optimized)
+  function filterData() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    
+    let filtered = _cache;
+
+    if (q) {
+      filtered = _cache.filter(item => 
+        (item.name && item.name.toLowerCase().includes(q)) ||
+        (item.id && item.id.toString().toLowerCase().includes(q)) ||
+        (item.phone && item.phone.toString().includes(q))
+      );
+      renderTable(filtered, filtered.length); // সার্চের সময় ফিল্টারড ডাটা দ্রুত সম্পূর্ণ দেখাবে
+      setNotice(`সার্চ রেজাল্ট: ${filtered.length} জন গ্রাহক পাওয়া গেছে`);
+    } else {
+      renderTable(filtered, displayLimit);
+    }
+  }
+
+  // 📋 সব কাস্টমার একসাথে দেখানোর ফাংশন
+  function showAllClients() {
+    document.getElementById('searchInput').value = '';
+    displayLimit = _cache.length;
+    renderTable(_cache, displayLimit);
+    setNotice(`সকল গ্রাহক প্রদর্শিত হচ্ছে (মোট: ${_cache.length} জন)`);
+  }
+
+  // 🔹 প্রথম পেজের ১০ জন দেখানোর ফাংশন
+  function showDefaultTen() {
+    document.getElementById('searchInput').value = '';
+    displayLimit = 10;
+    renderTable(_cache, displayLimit);
+    document.getElementById('filterNotice').style.display = 'none';
+  }
+
+  // Filter by Paid/Unpaid Status
+  function filterByStatus(status) {
+    const filtered = _cache.filter(c => c.status === status);
+    renderTable(filtered, filtered.length);
+    setNotice(`স্ট্যাটাস ফিল্টার: ${status} গ্রাহক (${filtered.length} জন)`);
+  }
+
+  function setNotice(msg) {
+    const noticeBox = document.getElementById('filterNotice');
+    document.getElementById('filterNoticeText').innerText = msg;
+    noticeBox.style.display = 'flex';
+  }
+
   // Render Table
-  function renderTable(records) {
+  function renderTable(records, limit) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
     let totalPaid = 0, totalUnpaid = 0;
 
-    const renderLimit = Math.min(records.length, 200);
+    const renderCount = Math.min(records.length, limit || 10);
 
-    for (let i = 0; i < renderLimit; i++) {
+    for (let i = 0; i < renderCount; i++) {
       const item = records[i];
       
       const itemKey = item.id ? item.id.toString().trim().toLowerCase() : '';
@@ -432,7 +515,6 @@
         ? `<span class="badge status-badge bg-success-subtle text-success border border-success"><i class="pulse-online"></i> Online</span>`
         : `<span class="badge status-badge bg-secondary-subtle text-secondary">Offline</span>`;
 
-      // WhatsApp Dynamic Link Generation (Single Message)
       let phoneClean = (item.phone || '').replace(/[^0-9]/g, '');
       if (phoneClean.length > 0 && !phoneClean.startsWith('88')) {
         phoneClean = '88' + phoneClean;
@@ -448,20 +530,16 @@
       const whatsappSingleBtn = phoneClean ? 
         `<a href="https://wa.me/${phoneClean}?text=${waMessage}" target="_blank" class="btn btn-sm btn-outline-success me-1" title="WhatsApp এ মেসেজ দিন"><i class="fa-brands fa-whatsapp"></i></a>` : '';
 
-      // Bill Pay Action Button
       const payButton = item.status === 'Unpaid' 
         ? `<button onclick="payBill('${item.id}')" class="btn btn-sm btn-success me-1" title="বিল পরিশোধ করুন"><i class="fa-solid fa-money-bill-wave me-1"></i>Pay</button>`
         : `<button disabled class="btn btn-sm btn-outline-secondary me-1" title="বিল পরিশোধিত"><i class="fa-solid fa-check"></i></button>`;
 
-      // Single Bill Reset / Generate Option
-      const singleBillGenBtn = `<button onclick="generateSingleBill('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="বিল Unpaid করুন (Single Bill Gen)"><i class="fa-solid fa-rotate-right"></i></button>`;
+      const singleBillGenBtn = `<button onclick="generateSingleBill('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="বিল Unpaid করুন"><i class="fa-solid fa-rotate-right"></i></button>`;
 
-      // Enable / Disable Action Button
       const toggleEnableBtn = isEnabled
         ? `<button onclick="toggleAccount('${item.id}', false)" class="btn btn-sm btn-warning me-1" title="ডিজেবল করুন"><i class="fa-solid fa-ban"></i></button>`
         : `<button onclick="toggleAccount('${item.id}', true)" class="btn btn-sm btn-info text-white me-1" title="ইনেবল করুন"><i class="fa-solid fa-check-circle"></i></button>`;
 
-      // Edit Button
       const editBtn = `<button onclick="openEditModal('${item.id}')" class="btn btn-sm btn-outline-primary me-1" title="এডিট করুন"><i class="fa-solid fa-pen-to-square"></i></button>`;
 
       const row = `
@@ -496,17 +574,56 @@
       tbody.innerHTML += row;
     }
 
-    records.forEach(item => {
+    _cache.forEach(item => {
       if (item.status === 'Paid') totalPaid += Number(item.billAmount || 0);
       else totalUnpaid += Number(item.billAmount || 0);
     });
 
     const totalOnlineCount = Object.keys(_mikrotikStatusMap).length;
 
-    document.getElementById('statTotalClients').innerText = records.length;
+    document.getElementById('statTotalClients').innerText = _cache.length;
     document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    document.getElementById('statOnlineCount').innerText = `${totalOnlineCount} / ${records.length}`;
+    document.getElementById('statOnlineCount').innerText = `${totalOnlineCount} / ${_cache.length}`;
+  }
+
+  // 📊 Excel / CSV Sheet Download Function
+  function downloadCSV(type) {
+    let dataToExport = _cache;
+
+    if (type === 'Paid') {
+      dataToExport = _cache.filter(c => c.status === 'Paid');
+    } else if (type === 'Unpaid') {
+      dataToExport = _cache.filter(c => c.status === 'Unpaid');
+    }
+
+    if (dataToExport.length === 0) {
+      return alert("ডাউনলোড করার জন্য কোনো ডাটা পাওয়া যায়নি!");
+    }
+
+    let csvContent = "\uFEFF"; // UTF-8 BOM Bangla Text Fix
+    csvContent += "Username/ID,Name,Phone,Package,Bill Amount,Status\n";
+
+    dataToExport.forEach(item => {
+      const row = [
+        `"${item.id || ''}"`,
+        `"${item.name || ''}"`,
+        `"${item.phone || ''}"`,
+        `"${item.package || ''}"`,
+        `"${item.billAmount || 0}"`,
+        `"${item.status || ''}"`
+      ];
+      csvContent += row.join(",") + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `ISP_Billing_${type}_Report_${getCurrentMonthKey()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   // Bulk WhatsApp Send Logic
@@ -553,7 +670,7 @@
     }
   }
 
-  // Single Bill Generate (Make Unpaid)
+  // Single Bill Generate
   async function generateSingleBill(id) {
     if (!_user) return;
     if (confirm(`আপনি কি ${id} - এর জন্য বিল নতুন করে রিসেট/জেনারেট করতে চান?`)) {
@@ -563,25 +680,6 @@
           status: 'Unpaid',
           lastUpdatedMonth: getCurrentMonthKey()
         });
-      } catch (e) { alert("ত্রুটি: " + e.message); } 
-      finally { toggleLoader(false); }
-    }
-  }
-
-  // Manual All Bill Generate for new month
-  async function generateAllBillsManual() {
-    if (!_user || _cache.length === 0) return alert("কোনো ক্লায়েন্ট ডাটা পাওয়া যায়নি!");
-    if (confirm("আপনি কি সকল ক্লায়েন্টের বিল নতুন মাসের জন্য Unpaid করতে চান?")) {
-      toggleLoader(true, "সকল গ্রাহকের বিল জেনারেট করা হচ্ছে...");
-      const updates = {};
-      const currentMonthKey = getCurrentMonthKey();
-      _cache.forEach(item => {
-        updates[`users/${_user.uid}/isp_clients/${item.id}/status`] = 'Unpaid';
-        updates[`users/${_user.uid}/isp_clients/${item.id}/lastUpdatedMonth`] = currentMonthKey;
-      });
-      try {
-        await _db.ref().update(updates);
-        alert("সকল গ্রাহকের বিল জেনারেট সম্পূর্ণ হয়েছে!");
       } catch (e) { alert("ত্রুটি: " + e.message); } 
       finally { toggleLoader(false); }
     }
@@ -626,7 +724,7 @@
     }
   });
 
-  // Enable / Disable Account Functionality
+  // Enable / Disable Account
   async function toggleAccount(id, enableStatus) {
     if (!_user) return;
     const actionText = enableStatus ? "সক্রিয় (Enable)" : "নিষ্ক্রিয় (Disable)";
@@ -641,7 +739,7 @@
     }
   }
 
-  // Form Submit (Single User Add)
+  // Form Submit (Add Client)
   document.getElementById('clientForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!_user) return;
@@ -677,16 +775,6 @@
       } catch (e) { alert("ত্রুটি: " + e.message); } 
       finally { toggleLoader(false); }
     }
-  }
-
-  function filterData() {
-    const q = document.getElementById('searchInput').value.toLowerCase();
-    const filtered = _cache.filter(item => 
-      (item.name && item.name.toLowerCase().includes(q)) ||
-      (item.id && item.id.toLowerCase().includes(q)) ||
-      (item.phone && item.phone.includes(q))
-    );
-    renderTable(filtered);
   }
 
   // Auto Refresh MikroTik Status every 15 seconds
