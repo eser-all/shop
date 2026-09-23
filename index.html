@@ -139,6 +139,10 @@
                 <input type="text" id="clientId" class="form-control form-control-sm" placeholder="41younus88" required>
               </div>
               <div class="mb-2">
+                <label class="form-label fw-semibold small mb-1">পাসওয়ার্ড (MikroTik Pass)</label>
+                <input type="text" id="clientPassword" class="form-control form-control-sm" placeholder="123456" required>
+              </div>
+              <div class="mb-2">
                 <label class="form-label fw-semibold small mb-1">গ্রাহকের নাম</label>
                 <input type="text" id="clientName" class="form-control form-control-sm" placeholder="Younus" required>
               </div>
@@ -146,13 +150,28 @@
                 <label class="form-label fw-semibold small mb-1">মোবাইল নম্বর</label>
                 <input type="text" id="clientPhone" class="form-control form-control-sm" placeholder="01920060010" required>
               </div>
+              <!-- 📍 এড্রেস / ঠিকানা ফিল্ড যুক্ত করা হলো -->
               <div class="mb-2">
-                <label class="form-label fw-semibold small mb-1">প্যাকেজ (Package)</label>
-                <input type="text" id="clientPackage" class="form-control form-control-sm" placeholder="SAM_630TK_I_Vat" required>
+                <label class="form-label fw-semibold small mb-1">এড্রেস / ঠিকানা</label>
+                <input type="text" id="clientAddress" class="form-control form-control-sm" placeholder="বাসা-১২, রোড-০৫, ঢাকা">
+              </div>
+              <div class="mb-2">
+                <label class="form-label fw-semibold small mb-1">প্যাকেজ সিলেক্ট করুন</label>
+                <select id="clientPackageSelect" class="form-select form-select-sm" onchange="onPackageChange('add')">
+                  <option value="SAM_500TK_5Mbps" data-price="500">SAM_500TK_5Mbps (৳500)</option>
+                  <option value="SAM_630TK_I_Vat" data-price="630" selected>SAM_630TK_I_Vat (৳630)</option>
+                  <option value="SAM_800TK_10Mbps" data-price="800">SAM_800TK_10Mbps (৳800)</option>
+                  <option value="SAM_1000TK_15Mbps" data-price="1000">SAM_1000TK_15Mbps (৳1000)</option>
+                  <option value="Custom">Custom / অন্যান্য প্যাকেজ</option>
+                </select>
+              </div>
+              <div class="mb-2" id="customPackageDiv" style="display: none;">
+                <label class="form-label fw-semibold small mb-1">কাস্টম প্যাকেজের নাম</label>
+                <input type="text" id="clientPackageCustom" class="form-control form-control-sm" placeholder="Custom Package Name">
               </div>
               <div class="mb-2">
                 <label class="form-label fw-semibold small mb-1">মাসিক বিল (৳)</label>
-                <input type="number" id="billAmount" class="form-control form-control-sm" placeholder="630" min="0" required>
+                <input type="number" id="billAmount" class="form-control form-control-sm" value="630" min="0" required>
               </div>
               <div class="mb-3">
                 <label class="form-label fw-semibold small mb-1">বিলিং স্ট্যাটাস</label>
@@ -173,7 +192,7 @@
           <div class="table-container mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div class="d-flex align-items-center gap-2">
-                <input type="text" id="searchInput" oninput="debouncedFilter()" class="form-control form-control-sm shadow-sm" style="width: 230px;" placeholder="🔍 ইউজার ID / ফোন খুঁজুন...">
+                <input type="text" id="searchInput" oninput="debouncedFilter()" class="form-control form-control-sm shadow-sm" style="width: 250px;" placeholder="🔍 ID / নাম / ফোন / এড্রেস খুঁজুন...">
                 
                 <button onclick="showAllClients()" class="btn btn-sm btn-outline-secondary fw-bold" title="সব গ্রাহক একসাথে দেখুন">
                   <i class="fa-solid fa-users me-1"></i> সব কাস্টমার
@@ -212,7 +231,8 @@
                 <thead class="table-light">
                   <tr>
                     <th>Username / ID</th>
-                    <th>নাম & ফোন</th>
+                    <th>Password</th>
+                    <th>নাম, ফোন & এড্রেস</th>
                     <th>প্যাকেজ</th>
                     <th>বিল</th>
                     <th>বিল স্ট্যাটাস</th>
@@ -247,6 +267,10 @@
             <input type="text" id="editClientIdDisplay" class="form-control form-control-sm" readonly disabled>
           </div>
           <div class="mb-2">
+            <label class="form-label fw-semibold small">পাসওয়ার্ড (Password)</label>
+            <input type="text" id="editClientPassword" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
             <label class="form-label fw-semibold small">গ্রাহকের নাম</label>
             <input type="text" id="editClientName" class="form-control form-control-sm" required>
           </div>
@@ -254,9 +278,24 @@
             <label class="form-label fw-semibold small">মোবাইল নম্বর</label>
             <input type="text" id="editClientPhone" class="form-control form-control-sm" required>
           </div>
+          <!-- 📍 এডিট ফর্মে এড্রেস যুক্ত করা হলো -->
           <div class="mb-2">
-            <label class="form-label fw-semibold small">প্যাকেজ</label>
-            <input type="text" id="editClientPackage" class="form-control form-control-sm" required>
+            <label class="form-label fw-semibold small">এড্রেস / ঠিকানা</label>
+            <input type="text" id="editClientAddress" class="form-control form-control-sm">
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold small">প্যাকেজ পরিবর্তন করুন</label>
+            <select id="editClientPackageSelect" class="form-select form-select-sm" onchange="onPackageChange('edit')">
+              <option value="SAM_500TK_5Mbps" data-price="500">SAM_500TK_5Mbps (৳500)</option>
+              <option value="SAM_630TK_I_Vat" data-price="630">SAM_630TK_I_Vat (৳630)</option>
+              <option value="SAM_800TK_10Mbps" data-price="800">SAM_800TK_10Mbps (৳800)</option>
+              <option value="SAM_1000TK_15Mbps" data-price="1000">SAM_1000TK_15Mbps (৳1000)</option>
+              <option value="Custom">Custom / অন্যান্য প্যাকেজ</option>
+            </select>
+          </div>
+          <div class="mb-2" id="editCustomPackageDiv" style="display: none;">
+            <label class="form-label fw-semibold small">কাস্টম প্যাকেজ নাম</label>
+            <input type="text" id="editClientPackageCustom" class="form-control form-control-sm">
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold small">মাসিক বিল (৳)</label>
@@ -321,6 +360,36 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
+  function onPackageChange(mode) {
+    if (mode === 'add') {
+      const select = document.getElementById('clientPackageSelect');
+      const customDiv = document.getElementById('customPackageDiv');
+      const billInput = document.getElementById('billAmount');
+      const selectedOption = select.options[select.selectedIndex];
+      
+      if (select.value === 'Custom') {
+        customDiv.style.display = 'block';
+      } else {
+        customDiv.style.display = 'none';
+        const price = selectedOption.getAttribute('data-price');
+        if (price) billInput.value = price;
+      }
+    } else if (mode === 'edit') {
+      const select = document.getElementById('editClientPackageSelect');
+      const customDiv = document.getElementById('editCustomPackageDiv');
+      const billInput = document.getElementById('editBillAmount');
+      const selectedOption = select.options[select.selectedIndex];
+      
+      if (select.value === 'Custom') {
+        customDiv.style.display = 'block';
+      } else {
+        customDiv.style.display = 'none';
+        const price = selectedOption.getAttribute('data-price');
+        if (price) billInput.value = price;
+      }
+    }
+  }
+
   // Auth Listener
   _auth.onAuthStateChanged(async (u) => {
     toggleLoader(true);
@@ -381,7 +450,6 @@
     }
   }
 
-  // 1st Date Auto Bill Generation with Arrears Accumulation Logic
   async function checkAutoBillGen() {
     const today = new Date();
     const currentDate = today.getDate();
@@ -398,7 +466,6 @@
 
           let newBillAmount = basePackageFee;
 
-          // আগের মাসে Unpaid থাকলে বকেয়া + নতুন মাসের প্যাকেজ বিল অটো যোগ হবে
           if (item.status === 'Unpaid') {
             newBillAmount = currentBill + basePackageFee;
           }
@@ -424,7 +491,6 @@
     }
   }
 
-  // Fetch MikroTik Status
   async function fetchMikrotikLiveStatus() {
     try {
       const res = await fetch(MIKROTIK_API_URL);
@@ -459,7 +525,8 @@
       filtered = _cache.filter(item => 
         (item.name && item.name.toLowerCase().includes(q)) ||
         (item.id && item.id.toString().toLowerCase().includes(q)) ||
-        (item.phone && item.phone.toString().includes(q))
+        (item.phone && item.phone.toString().includes(q)) ||
+        (item.address && item.address.toLowerCase().includes(q))
       );
       renderTable(filtered, filtered.length);
       setNotice(`সার্চ রেজাল্ট: ${filtered.length} জন গ্রাহক পাওয়া গেছে`);
@@ -516,7 +583,7 @@
     const renderCount = Math.min(records.length, limit || 10);
 
     if (renderCount === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">কোনো গ্রাহকের তথ্য পাওয়া যায়নি!</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">কোনো গ্রাহকের তথ্য পাওয়া যায়নি!</td></tr>`;
       return;
     }
 
@@ -569,15 +636,22 @@
 
       const editBtn = `<button onclick="openEditModal('${item.id}')" class="btn btn-sm btn-outline-primary me-1" title="এডিট করুন"><i class="fa-solid fa-pen-to-square"></i></button>`;
 
+      // 📍 ঠিকানা প্রদর্শন
+      const addressDisplay = item.address 
+        ? `<div class="small text-secondary"><i class="fa-solid fa-location-dot text-danger me-1"></i>${item.address}</div>`
+        : '';
+
       rowsHtml += `
         <tr>
           <td>
             <div class="fw-bold text-dark">${item.id}</div>
             <small class="text-muted">${item.pop || ''}</small>
           </td>
+          <td><code class="text-dark bg-light px-2 py-1 rounded" title="পাসওয়ার্ড">${item.password || 'N/A'}</code></td>
           <td>
-            <div class="fw-semibold">${item.name}</div>
-            <small class="text-muted">${item.phone || 'N/A'}</small>
+            <div class="fw-semibold text-primary">${item.name}</div>
+            <div class="small text-muted"><i class="fa-solid fa-phone me-1"></i>${item.phone || 'N/A'}</div>
+            ${addressDisplay}
           </td>
           <td><span class="badge bg-info text-dark">${item.package}</span></td>
           <td class="fw-bold">৳ ${Number(item.billAmount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
@@ -616,13 +690,15 @@
     }
 
     let csvContent = "\uFEFF";
-    csvContent += "Username/ID,Name,Phone,Package,Bill Amount,Status\n";
+    csvContent += "Username/ID,Password,Name,Phone,Address,Package,Bill Amount,Status\n";
 
     dataToExport.forEach(item => {
       const row = [
         `"${item.id || ''}"`,
+        `"${item.password || ''}"`,
         `"${item.name || ''}"`,
         `"${item.phone || ''}"`,
+        `"${item.address || ''}"`,
         `"${item.package || ''}"`,
         `"${item.billAmount || 0}"`,
         `"${item.status || ''}"`
@@ -679,7 +755,7 @@
         const baseFee = Number(client.monthlyPackageFee || client.billAmount || 0);
         await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
           status: 'Paid',
-          billAmount: baseFee, // বিল পরিশোধ করলে কারেন্ট বিল প্যাকেজ ফি-তে ফিরে আসবে
+          billAmount: baseFee, 
           paidAt: Date.now()
         });
       } catch (e) { alert("ত্রুটি: " + e.message); } 
@@ -707,11 +783,32 @@
 
     document.getElementById('editClientId').value = client.id;
     document.getElementById('editClientIdDisplay').value = client.id;
+    document.getElementById('editClientPassword').value = client.password || '';
     document.getElementById('editClientName').value = client.name || '';
     document.getElementById('editClientPhone').value = client.phone || '';
-    document.getElementById('editClientPackage').value = client.package || '';
-    document.getElementById('editBillAmount').value = client.billAmount || 0;
+    document.getElementById('editClientAddress').value = client.address || '';
+    
+    const pkgSelect = document.getElementById('editClientPackageSelect');
+    const customDiv = document.getElementById('editCustomPackageDiv');
+    let pkgFound = false;
 
+    for (let i = 0; i < pkgSelect.options.length; i++) {
+      if (pkgSelect.options[i].value === client.package) {
+        pkgSelect.selectedIndex = i;
+        pkgFound = true;
+        break;
+      }
+    }
+
+    if (!pkgFound) {
+      pkgSelect.value = 'Custom';
+      customDiv.style.display = 'block';
+      document.getElementById('editClientPackageCustom').value = client.package || '';
+    } else {
+      customDiv.style.display = 'none';
+    }
+
+    document.getElementById('editBillAmount').value = client.billAmount || 0;
     editModalInstance.show();
   }
 
@@ -720,14 +817,23 @@
     if (!_user) return;
     
     const id = document.getElementById('editClientId').value;
+    const pkgSelect = document.getElementById('editClientPackageSelect');
+    let pkgName = pkgSelect.value;
+
+    if (pkgName === 'Custom') {
+      pkgName = document.getElementById('editClientPackageCustom').value.trim();
+    }
+
     const amount = Number(parseFloat(document.getElementById('editBillAmount').value).toFixed(2)) || 0;
 
     const updatedData = {
+      password: document.getElementById('editClientPassword').value.trim(),
       name: document.getElementById('editClientName').value.trim(),
       phone: document.getElementById('editClientPhone').value.trim(),
-      package: document.getElementById('editClientPackage').value.trim(),
+      address: document.getElementById('editClientAddress').value.trim(),
+      package: pkgName,
       billAmount: amount,
-      monthlyPackageFee: amount, // অরিজিনাল প্যাকেজ বিল আপডেট সেভ রাখা
+      monthlyPackageFee: amount, 
       updatedAt: Date.now()
     };
 
@@ -762,15 +868,24 @@
     toggleLoader(true);
 
     const inputId = document.getElementById('clientId').value.trim();
+    const pkgSelect = document.getElementById('clientPackageSelect');
+    let pkgName = pkgSelect.value;
+
+    if (pkgName === 'Custom') {
+      pkgName = document.getElementById('clientPackageCustom').value.trim();
+    }
+
     const amount = Number(parseFloat(document.getElementById('billAmount').value).toFixed(2)) || 0;
 
     const clientData = {
       id: inputId,
+      password: document.getElementById('clientPassword').value.trim(),
       name: document.getElementById('clientName').value.trim(),
       phone: document.getElementById('clientPhone').value.trim(),
-      package: document.getElementById('clientPackage').value.trim(),
+      address: document.getElementById('clientAddress').value.trim(),
+      package: pkgName,
       billAmount: amount,
-      monthlyPackageFee: amount, // মূল প্যাকেজ ফি সেভ থাকছে
+      monthlyPackageFee: amount,
       status: document.getElementById('paymentStatus').value,
       enabled: true,
       lastUpdatedMonth: getCurrentMonthKey(),
@@ -780,6 +895,7 @@
     try {
       await _db.ref(`users/${_user.uid}/isp_clients/${clientData.id}`).update(clientData);
       document.getElementById('clientForm').reset();
+      document.getElementById('customPackageDiv').style.display = 'none';
     } catch (err) {
       alert("ত্রুটি: " + err.message);
     } finally {
