@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Permissions-Policy" content="unload=(self)">
   <title>ISP বিলিং ও MikroTik লাইভ মনিটরিং সিস্টেম</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -132,7 +131,6 @@
       <div class="row">
         <!-- Sidebar Controls -->
         <div class="col-lg-3 mb-4">
-          <!-- Add Single Client Form -->
           <div class="card card-custom p-3">
             <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-1 text-primary"></i>নতুন ক্লায়েন্ট এন্ট্রি</h6>
             <form id="clientForm">
@@ -175,17 +173,15 @@
           <div class="table-container mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div class="d-flex align-items-center gap-2">
-                <!-- ⚡ ফাস্ট সার্চ অপ্টিমাইজেশন (Debounce input) -->
+                <!-- ⚡ ফাস্ট সার্চ ইনপুট -->
                 <input type="text" id="searchInput" oninput="debouncedFilter()" class="form-control form-control-sm shadow-sm" style="width: 230px;" placeholder="🔍 ইউজার ID / ফোন খুঁজুন...">
                 
-                <!-- 📋 সব কাস্টমার অপশন -->
                 <button onclick="showAllClients()" class="btn btn-sm btn-outline-secondary fw-bold" title="সব গ্রাহক একসাথে দেখুন">
                   <i class="fa-solid fa-users me-1"></i> সব কাস্টমার
                 </button>
               </div>
 
               <div class="d-flex gap-2 flex-wrap">
-                <!-- 📊 ডাউনলোড অপশনসমূহ -->
                 <div class="dropdown">
                   <button class="btn btn-outline-dark btn-sm fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-file-excel me-1 text-success"></i> শিট ডাউনলোড
@@ -310,7 +306,7 @@
   let _cache = [];
   let _mikrotikStatusMap = {};
   let editModalInstance = null;
-  let displayLimit = 10; // 🔹 প্রথম পেজে ১০ জন দেখাবে
+  let displayLimit = 10;
   let filterTimeout = null;
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -381,6 +377,7 @@
         const val = snap.val();
         _cache = val ? Object.values(val) : [];
         checkAutoBillGen();
+        updateSummaryStats();
         filterData();
       });
     }
@@ -424,6 +421,7 @@
             _mikrotikStatusMap[item.username.toString().trim().toLowerCase()] = item;
           }
         });
+        updateSummaryStats();
         filterData();
       }
     } catch (e) {
@@ -431,18 +429,17 @@
     }
   }
 
-  // ⚡ Debouncing for Super-fast Searching
+  // ⚡ Debounced Search (মেমোরি হ্যাং রোধ করতে)
   function debouncedFilter() {
     clearTimeout(filterTimeout);
     filterTimeout = setTimeout(() => {
       filterData();
-    }, 250); 
+    }, 150); 
   }
 
-  // Filter Data (Optimized)
+  // Filter Data Fix
   function filterData() {
     const q = document.getElementById('searchInput').value.trim().toLowerCase();
-    
     let filtered = _cache;
 
     if (q) {
@@ -451,14 +448,13 @@
         (item.id && item.id.toString().toLowerCase().includes(q)) ||
         (item.phone && item.phone.toString().includes(q))
       );
-      renderTable(filtered, filtered.length); // সার্চের সময় ফিল্টারড ডাটা দ্রুত সম্পূর্ণ দেখাবে
+      renderTable(filtered, filtered.length);
       setNotice(`সার্চ রেজাল্ট: ${filtered.length} জন গ্রাহক পাওয়া গেছে`);
     } else {
-      renderTable(filtered, displayLimit);
+      renderTable(_cache, displayLimit);
     }
   }
 
-  // 📋 সব কাস্টমার একসাথে দেখানোর ফাংশন
   function showAllClients() {
     document.getElementById('searchInput').value = '';
     displayLimit = _cache.length;
@@ -466,7 +462,6 @@
     setNotice(`সকল গ্রাহক প্রদর্শিত হচ্ছে (মোট: ${_cache.length} জন)`);
   }
 
-  // 🔹 প্রথম পেজের ১০ জন দেখানোর ফাংশন
   function showDefaultTen() {
     document.getElementById('searchInput').value = '';
     displayLimit = 10;
@@ -474,7 +469,6 @@
     document.getElementById('filterNotice').style.display = 'none';
   }
 
-  // Filter by Paid/Unpaid Status
   function filterByStatus(status) {
     const filtered = _cache.filter(c => c.status === status);
     renderTable(filtered, filtered.length);
@@ -487,11 +481,28 @@
     noticeBox.style.display = 'flex';
   }
 
-  // Render Table
+  // 📊 আলাদা স্ট্যাট ক্যালকুলেশন (যা লুপ ক্র্যাশ রোধ করে)
+  function updateSummaryStats() {
+    let totalPaid = 0, totalUnpaid = 0;
+    
+    for (let i = 0; i < _cache.length; i++) {
+      const item = _cache[i];
+      if (item.status === 'Paid') totalPaid += Number(item.billAmount || 0);
+      else totalUnpaid += Number(item.billAmount || 0);
+    }
+
+    const totalOnlineCount = Object.keys(_mikrotikStatusMap).length;
+
+    document.getElementById('statTotalClients').innerText = _cache.length;
+    document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('statOnlineCount').innerText = `${totalOnlineCount} / ${_cache.length}`;
+  }
+
+  // Render Table Safe
   function renderTable(records, limit) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
-    let totalPaid = 0, totalUnpaid = 0;
 
     const renderCount = Math.min(records.length, limit || 10);
 
@@ -573,21 +584,9 @@
       `;
       tbody.innerHTML += row;
     }
-
-    _cache.forEach(item => {
-      if (item.status === 'Paid') totalPaid += Number(item.billAmount || 0);
-      else totalUnpaid += Number(item.billAmount || 0);
-    });
-
-    const totalOnlineCount = Object.keys(_mikrotikStatusMap).length;
-
-    document.getElementById('statTotalClients').innerText = _cache.length;
-    document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    document.getElementById('statOnlineCount').innerText = `${totalOnlineCount} / ${_cache.length}`;
   }
 
-  // 📊 Excel / CSV Sheet Download Function
+  // CSV Sheet Download Function
   function downloadCSV(type) {
     let dataToExport = _cache;
 
@@ -601,7 +600,7 @@
       return alert("ডাউনলোড করার জন্য কোনো ডাটা পাওয়া যায়নি!");
     }
 
-    let csvContent = "\uFEFF"; // UTF-8 BOM Bangla Text Fix
+    let csvContent = "\uFEFF";
     csvContent += "Username/ID,Name,Phone,Package,Bill Amount,Status\n";
 
     dataToExport.forEach(item => {
@@ -626,7 +625,7 @@
     document.body.removeChild(link);
   }
 
-  // Bulk WhatsApp Send Logic
+  // Bulk WhatsApp
   async function sendBulkWhatsApp() {
     const unpaidClients = _cache.filter(c => c.status === 'Unpaid');
     if (unpaidClients.length === 0) {
@@ -655,7 +654,7 @@
     }
   }
 
-  // Bill Pay Functionality
+  // Bill Pay
   async function payBill(id) {
     if (!_user) return;
     if (confirm(`আপনি কি ${id} - এর বিল সংগ্রহ নিশ্চিত করতে চান?`)) {
@@ -685,7 +684,7 @@
     }
   }
 
-  // User Editing Options
+  // Open Edit Modal
   function openEditModal(id) {
     const client = _cache.find(c => c.id === id);
     if (!client) return;
@@ -724,7 +723,7 @@
     }
   });
 
-  // Enable / Disable Account
+  // Toggle Account
   async function toggleAccount(id, enableStatus) {
     if (!_user) return;
     const actionText = enableStatus ? "সক্রিয় (Enable)" : "নিষ্ক্রিয় (Disable)";
@@ -739,14 +738,14 @@
     }
   }
 
-  // Form Submit (Add Client)
+  // Add Client
   document.getElementById('clientForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!_user) return;
     toggleLoader(true);
 
     const clientData = {
-      id: document.getElementById('clientId').value.trim(),
+      id: document.clientId ? document.getElementById('clientId').value.trim() : document.getElementById('clientId').value.trim(),
       name: document.getElementById('clientName').value.trim(),
       phone: document.getElementById('clientPhone').value.trim(),
       package: document.getElementById('clientPackage').value.trim(),
@@ -777,7 +776,6 @@
     }
   }
 
-  // Auto Refresh MikroTik Status every 15 seconds
   setInterval(fetchMikrotikLiveStatus, 15000);
 </script>
 
