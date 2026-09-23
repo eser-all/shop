@@ -173,7 +173,7 @@
           <div class="table-container mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div class="d-flex align-items-center gap-2">
-                <!-- ⚡ ফাস্ট সার্চ ইনপুট -->
+                <!-- ⚡ আল্ট্রা ফাস্ট ইনস্ট্যান্ট সার্চ -->
                 <input type="text" id="searchInput" oninput="debouncedFilter()" class="form-control form-control-sm shadow-sm" style="width: 230px;" placeholder="🔍 ইউজার ID / ফোন খুঁজুন...">
                 
                 <button onclick="showAllClients()" class="btn btn-sm btn-outline-secondary fw-bold" title="সব গ্রাহক একসাথে দেখুন">
@@ -429,12 +429,12 @@
     }
   }
 
-  // ⚡ Debounced Search (মেমোরি হ্যাং রোধ করতে)
+  // ⚡ Debounced Search (দ্রুত সার্চ এবং ব্রাউজার ফ্রিজ হওয়া রোধ করতে)
   function debouncedFilter() {
     clearTimeout(filterTimeout);
     filterTimeout = setTimeout(() => {
       filterData();
-    }, 150); 
+    }, 100); 
   }
 
   // Filter Data Fix
@@ -481,7 +481,7 @@
     noticeBox.style.display = 'flex';
   }
 
-  // 📊 আলাদা স্ট্যাট ক্যালকুলেশন (যা লুপ ক্র্যাশ রোধ করে)
+  // 📊 সামারি আপডেট
   function updateSummaryStats() {
     let totalPaid = 0, totalUnpaid = 0;
     
@@ -499,12 +499,17 @@
     document.getElementById('statOnlineCount').innerText = `${totalOnlineCount} / ${_cache.length}`;
   }
 
-  // Render Table Safe
+  // ⚡ Fast Table Renderer (String Accumulation Optimization)
   function renderTable(records, limit) {
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '';
-
     const renderCount = Math.min(records.length, limit || 10);
+
+    if (renderCount === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">কোনো গ্রাহকের তথ্য পাওয়া যায়নি!</td></tr>`;
+      return;
+    }
+
+    let rowsHtml = '';
 
     for (let i = 0; i < renderCount; i++) {
       const item = records[i];
@@ -553,7 +558,7 @@
 
       const editBtn = `<button onclick="openEditModal('${item.id}')" class="btn btn-sm btn-outline-primary me-1" title="এডিট করুন"><i class="fa-solid fa-pen-to-square"></i></button>`;
 
-      const row = `
+      rowsHtml += `
         <tr>
           <td>
             <div class="fw-bold text-dark">${item.id}</div>
@@ -582,8 +587,8 @@
           </td>
         </tr>
       `;
-      tbody.innerHTML += row;
     }
+    tbody.innerHTML = rowsHtml;
   }
 
   // CSV Sheet Download Function
@@ -738,14 +743,16 @@
     }
   }
 
-  // Add Client
+  // 🛠️ Fixed Add Client Function
   document.getElementById('clientForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!_user) return;
     toggleLoader(true);
 
+    const inputId = document.getElementById('clientId').value.trim();
+
     const clientData = {
-      id: document.clientId ? document.getElementById('clientId').value.trim() : document.getElementById('clientId').value.trim(),
+      id: inputId,
       name: document.getElementById('clientName').value.trim(),
       phone: document.getElementById('clientPhone').value.trim(),
       package: document.getElementById('clientPackage').value.trim(),
