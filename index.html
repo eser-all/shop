@@ -212,7 +212,7 @@
                 </div>
 
                 <button onclick="sendBulkWhatsApp()" class="btn btn-success btn-sm fw-bold">
-                  <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp
+                  <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp Bulk
                 </button>
                 <button onclick="fetchMikrotikLiveStatus()" class="btn btn-outline-info btn-sm fw-bold">
                   <i class="fa-solid fa-arrows-rotate me-1"></i> Sync
@@ -471,7 +471,7 @@
           updates[`users/${_user.uid}/isp_clients/${item.id}/billAmount`] = newBillAmount;
           updates[`users/${_user.uid}/isp_clients/${item.id}/monthlyPackageFee`] = basePackageFee;
           updates[`users/${_user.uid}/isp_clients/${item.id}/status`] = 'Unpaid';
-          updates[`users/${_user.uid}/isp_clients/${item.id}/receiptNo`] = ''; // নতুন মাসের জন্য রিসিভ নম্বর রিসেট
+          updates[`users/${_user.uid}/isp_clients/${item.id}/receiptNo`] = '';
           updates[`users/${_user.uid}/isp_clients/${item.id}/lastUpdatedMonth`] = currentMonthKey;
           hasUpdates = true;
         }
@@ -615,16 +615,31 @@
       if (phoneClean.length > 0 && !phoneClean.startsWith('88')) {
         phoneClean = '88' + phoneClean;
       }
-      const waMessage = encodeURIComponent(
+      
+      // WhatsApp মেসেজ কাস্টমাইজেশন (Unpaid অবস্থায় বিল পরিশোধ নোটিশ)
+      const waUnpaidMsg = encodeURIComponent(
         `প্রিয় ${item.name},\n` +
         `আপনার ইন্টারনেট বিলের বিবরণ:\n` +
         `মাসের নাম: ${getCurrentMonthKey()}\n` +
         `বিল পরিমাণ: ৳${item.billAmount}\n` +
-        `স্ট্যাটাস: ${item.status}\n\n` +
+        `স্ট্যাটাস: Unpaid\n\n` +
         `অনুগৃহ করে দ্রুত বিল পরিশোধ নিশ্চিত করুন। ধন্যবাদ!`
       );
+
+      // WhatsApp মেসেজ (Paid অবস্থায় রিসিভ সহ ধন্যবাদ নোটিশ)
+      const waPaidMsg = encodeURIComponent(
+        `প্রিয় ${item.name},\n` +
+        `আপনার ইন্টারনেট বিল পরিশোধ সম্পন্ন হয়েছে।\n\n` +
+        `প্যাকেজ: ${item.package}\n` +
+        `পরিশোধিত বিল: ৳${item.billAmount}\n` +
+        `রিসিভ/TrxID নম্বর: ${item.receiptNo || 'N/A'}\n\n` +
+        `বিল পরিশোধ করার জন্য আপনাকে অসংখ্য ধন্যবাদ!`
+      );
+
+      const msgToSend = item.status === 'Paid' ? waPaidMsg : waUnpaidMsg;
+
       const whatsappSingleBtn = phoneClean ? 
-        `<a href="https://wa.me/${phoneClean}?text=${waMessage}" target="_blank" class="btn btn-sm btn-outline-success me-1" title="WhatsApp এ মেসেজ দিন"><i class="fa-brands fa-whatsapp"></i></a>` : '';
+        `<a href="https://wa.me/${phoneClean}?text=${msgToSend}" target="_blank" class="btn btn-sm btn-outline-success me-1" title="WhatsApp এ মেসেজ দিন"><i class="fa-brands fa-whatsapp"></i></a>` : '';
 
       const payButton = item.status === 'Unpaid' 
         ? `<button onclick="payBill('${item.id}')" class="btn btn-sm btn-success me-1" title="বিল পরিশোধ করুন"><i class="fa-solid fa-money-bill-wave me-1"></i>Pay</button>`
@@ -743,29 +758,59 @@
     }
   }
 
-  // 🔔 রিসিভ নম্বর চাওয়া সহ বিল পরিশোধ অপশন
+  // 🔔 রিসিভ নম্বর চাওয়া ও সরাসরি হোয়াটসঅ্যাপ ধন্যবাদ মেসেজ পাঠানোর লজিক
   async function payBill(id) {
     if (!_user) return;
     const client = _cache.find(c => c.id === id);
     if (!client) return;
 
-    // পপ-আপ উইন্ডো (Prompt) খুলে রিসিভ নম্বর চাওয়া হচ্ছে
-    const receiptInput = prompt(`গ্রাহক: ${client.name} (${id})\nমোট বিল: ৳${client.billAmount}\n\nঅনুগৃহ করে রিসিভ / ভাউচার / TrxID নম্বরটি লিখুন (ঐচ্ছিক):`);
+    // ১. পপ-আপে রিসিভ নম্বর চাওয়া
+    const receiptInput = prompt(`গ্রাহক: ${client.name} (${id})\nমোট বিল: ৳${client.billAmount}\n\nঅনুগৃহ করে রিসিভ / ভাউচার / TrxID নম্বরটি লিখুন:`);
     
-    // ক্যানসেল চাপলে কোনো কাজ হবে না
-    if (receiptInput === null) return;
+    if (receiptInput === null) return; // ক্যানসেল চাপলে কিছুই হবে না
+
+    const receiptNoSaved = receiptInput.trim() || 'N/A';
 
     toggleLoader(true, "বিল পরিশোধের তথ্য আপডেট হচ্ছে...");
     try {
       const baseFee = Number(client.monthlyPackageFee || client.billAmount || 0);
+      
+      // ২. ফায়ারবেজ ডাটাবেজে আপডেট
       await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
         status: 'Paid',
         billAmount: baseFee, 
-        receiptNo: receiptInput.trim() || 'N/A', // রিসিভ নম্বর সেভ করা হচ্ছে
+        receiptNo: receiptNoSaved,
         paidAt: Date.now()
       });
-    } catch (e) { alert("ত্রুটি: " + e.message); } 
-    finally { toggleLoader(false); }
+
+      // ৩. বিল পরিশোধ শেষে হোয়াটসঅ্যাপে ধন্যবাদ পাঠানোর অপশন
+      let phoneClean = (client.phone || '').replace(/[^0-9]/g, '');
+      if (phoneClean.length > 0 && !phoneClean.startsWith('88')) {
+        phoneClean = '88' + phoneClean;
+      }
+
+      if (phoneClean) {
+        const confirmSend = confirm(`বিল সফলভাবে পরিশোধিত হয়েছে!\n\nআপনি কি গ্রাহক ${client.name}-কে WhatsApp-এ রিসিভ নম্বরসহ ধন্যবাদ মেসেজ পাঠাতে চান?`);
+        
+        if (confirmSend) {
+          const thankYouText = encodeURIComponent(
+            `প্রিয় ${client.name},\n` +
+            `আপনার ইন্টারনেট বিল পরিশোধ সফল হয়েছে।\n\n` +
+            `প্যাকেজ: ${client.package}\n` +
+            `বিল পরিমাণ: ৳${baseFee}\n` +
+            `রিসিভ/TrxID নম্বর: ${receiptNoSaved}\n\n` +
+            `বিল পরিশোধ করার জন্য আপনাকে অসংখ্য ধন্যবাদ!`
+          );
+          
+          window.open(`https://wa.me/${phoneClean}?text=${thankYouText}`, '_blank');
+        }
+      }
+
+    } catch (e) { 
+      alert("ত্রুটি: " + e.message); 
+    } finally { 
+      toggleLoader(false); 
+    }
   }
 
   async function generateSingleBill(id) {
@@ -775,7 +820,7 @@
       try {
         await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
           status: 'Unpaid',
-          receiptNo: '', // রিসেট করলে রিসিভ নম্বর মুছে যাবে
+          receiptNo: '',
           lastUpdatedMonth: getCurrentMonthKey()
         });
       } catch (e) { alert("ত্রুটি: " + e.message); } 
