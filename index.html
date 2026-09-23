@@ -173,13 +173,17 @@
         <div class="col-lg-8">
           <div class="table-container mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <input type="text" id="searchInput" onkeyup="filterData()" class="form-control form-control-sm shadow-sm" style="width: 240px;" placeholder="🔍 খুঁজুন (Username, Phone)...">
-              <div class="d-flex gap-2">
+              <input type="text" id="searchInput" onkeyup="filterData()" class="form-control form-control-sm shadow-sm" style="width: 200px;" placeholder="🔍 খুঁজুন (Username, Phone)...">
+              <div class="d-flex gap-2 flex-wrap">
+                <!-- WhatsApp Bulk Button -->
+                <button onclick="sendBulkWhatsApp()" class="btn btn-success btn-sm fw-bold">
+                  <i class="fa-brands fa-whatsapp me-1"></i> সবাইকে WhatsApp নোটিশ
+                </button>
                 <button onclick="fetchMikrotikLiveStatus()" class="btn btn-outline-info btn-sm fw-bold">
-                  <i class="fa-solid fa-arrows-rotate me-1"></i> MikroTik Sync
+                  <i class="fa-solid fa-arrows-rotate me-1"></i> Sync
                 </button>
                 <button onclick="generateAllBillsManual()" class="btn btn-outline-warning btn-sm fw-bold">
-                  <i class="fa-solid fa-receipt me-1"></i> নতুন মাসের বিল
+                  <i class="fa-solid fa-receipt me-1"></i> নতুন বিল
                 </button>
               </div>
             </div>
@@ -259,6 +263,7 @@
 
 <script>
   const MIKROTIK_API_URL = 'http://localhost:5000/api/mikrotik/users-status';
+  const WHATSAPP_BULK_URL = 'http://localhost:5000/api/whatsapp/send-bulk';
 
   // Firebase Configuration
   const firebaseConfig = {
@@ -357,7 +362,7 @@
   // 1st Date Auto Bill Generation Logic
   async function checkAutoBillGen() {
     const today = new Date();
-    const currentDate = today.getDate(); // ১ তারিখ কি না চেক করবে
+    const currentDate = today.getDate();
     const currentMonthKey = getCurrentMonthKey();
 
     if (currentDate === 1 && _cache.length > 0) {
@@ -413,7 +418,7 @@
       const itemKey = item.id ? item.id.toString().trim().toLowerCase() : '';
       const mkData = _mikrotikStatusMap[itemKey];
       const isOnline = mkData && mkData.status === 'Online';
-      const isEnabled = item.enabled !== false; // Default true
+      const isEnabled = item.enabled !== false; 
 
       const billBadge = item.status === 'Paid' 
         ? '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Paid</span>' 
@@ -426,6 +431,22 @@
       const liveBadge = isOnline
         ? `<span class="badge status-badge bg-success-subtle text-success border border-success"><i class="pulse-online"></i> Online</span>`
         : `<span class="badge status-badge bg-secondary-subtle text-secondary">Offline</span>`;
+
+      // WhatsApp Dynamic Link Generation (Single Message)
+      let phoneClean = (item.phone || '').replace(/[^0-9]/g, '');
+      if (phoneClean.length > 0 && !phoneClean.startsWith('88')) {
+        phoneClean = '88' + phoneClean;
+      }
+      const waMessage = encodeURIComponent(
+        `প্রিয় ${item.name},\n` +
+        `আপনার ইন্টারনেট বিলের বিবরণ:\n` +
+        `মাসের নাম: ${getCurrentMonthKey()}\n` +
+        `বিল পরিমাণ: ৳${item.billAmount}\n` +
+        `স্ট্যাটাস: ${item.status}\n\n` +
+        `অনুগৃহ করে দ্রুত বিল পরিশোধ নিশ্চিত করুন। ধন্যবাদ!`
+      );
+      const whatsappSingleBtn = phoneClean ? 
+        `<a href="https://wa.me/${phoneClean}?text=${waMessage}" target="_blank" class="btn btn-sm btn-outline-success me-1" title="WhatsApp এ মেসেজ দিন"><i class="fa-brands fa-whatsapp"></i></a>` : '';
 
       // Bill Pay Action Button
       const payButton = item.status === 'Unpaid' 
@@ -460,6 +481,7 @@
           <td>${liveBadge}</td>
           <td class="text-center">
             <div class="d-flex justify-content-center align-items-center">
+              ${whatsappSingleBtn}
               ${payButton}
               ${singleBillGenBtn}
               ${editBtn}
@@ -485,6 +507,35 @@
     document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('statOnlineCount').innerText = `${totalOnlineCount} / ${records.length}`;
+  }
+
+  // Bulk WhatsApp Send Logic
+  async function sendBulkWhatsApp() {
+    const unpaidClients = _cache.filter(c => c.status === 'Unpaid');
+    if (unpaidClients.length === 0) {
+      return alert("বর্তমানে কোনো Unpaid বিল গ্রাহক পাওয়া যায়নি!");
+    }
+
+    if (confirm(`বর্তমানে ${unpaidClients.length} জন গ্রাহকের বিল Unpaid আছে। আপনি কি সবার নম্বরে WhatsApp নোটিশ পাঠাতে চান?`)) {
+      toggleLoader(true, "WhatsApp-এ সবার কাছে মেসেজ পাঠানো হচ্ছে...");
+      try {
+        const res = await fetch(WHATSAPP_BULK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clients: unpaidClients, month: getCurrentMonthKey() })
+        });
+        const result = await res.json();
+        if (result.success) {
+          alert(`সফলভাবে মেসেজ পাঠানো সম্পন্ন হয়েছে!`);
+        } else {
+          alert("ত্রুটি: " + result.message);
+        }
+      } catch (err) {
+        alert("WhatsApp সার্ভারে সংযোগ করা সম্ভব হয়নি! আপনার Node.js সার্ভার চালু আছে কিনা তা নিশ্চিত করুন।");
+      } finally {
+        toggleLoader(false);
+      }
+    }
   }
 
   // Bill Pay Functionality
@@ -643,4 +694,4 @@
 </script>
 
 </body>
-</html> 
+</html>
