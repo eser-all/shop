@@ -471,6 +471,7 @@
           updates[`users/${_user.uid}/isp_clients/${item.id}/billAmount`] = newBillAmount;
           updates[`users/${_user.uid}/isp_clients/${item.id}/monthlyPackageFee`] = basePackageFee;
           updates[`users/${_user.uid}/isp_clients/${item.id}/status`] = 'Unpaid';
+          updates[`users/${_user.uid}/isp_clients/${item.id}/receiptNo`] = ''; // নতুন মাসের জন্য রিসিভ নম্বর রিসেট
           updates[`users/${_user.uid}/isp_clients/${item.id}/lastUpdatedMonth`] = currentMonthKey;
           hasUpdates = true;
         }
@@ -524,7 +525,8 @@
         (item.name && item.name.toLowerCase().includes(q)) ||
         (item.id && item.id.toString().toLowerCase().includes(q)) ||
         (item.phone && item.phone.toString().includes(q)) ||
-        (item.address && item.address.toLowerCase().includes(q))
+        (item.address && item.address.toLowerCase().includes(q)) ||
+        (item.receiptNo && item.receiptNo.toLowerCase().includes(q))
       );
       renderTable(filtered, filtered.length);
       setNotice(`সার্চ রেজাল্ট: ${filtered.length} জন গ্রাহক পাওয়া গেছে`);
@@ -595,8 +597,10 @@
       const isOnline = mkData && mkData.status === 'Online';
       const isEnabled = item.enabled !== false; 
 
+      const receiptDisplay = item.receiptNo ? `<div class="small text-success fw-bold mt-1"><i class="fa-solid fa-receipt me-1"></i>${item.receiptNo}</div>` : '';
+
       const billBadge = item.status === 'Paid' 
-        ? '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Paid</span>' 
+        ? `<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Paid</span>${receiptDisplay}` 
         : '<span class="badge bg-danger"><i class="fa-solid fa-clock me-1"></i>Unpaid</span>';
 
       const accountStatusBadge = isEnabled
@@ -684,7 +688,7 @@
     }
 
     let csvContent = "\uFEFF";
-    csvContent += "Username/ID,Password,Name,Phone,Address,Package,Bill Amount,Status\n";
+    csvContent += "Username/ID,Password,Name,Phone,Address,Package,Bill Amount,Status,Receipt No\n";
 
     dataToExport.forEach(item => {
       const row = [
@@ -695,7 +699,8 @@
         `"${item.address || ''}"`,
         `"${item.package || ''}"`,
         `"${item.billAmount || 0}"`,
-        `"${item.status || ''}"`
+        `"${item.status || ''}"`,
+        `"${item.receiptNo || ''}"`
       ];
       csvContent += row.join(",") + "\n";
     });
@@ -738,23 +743,29 @@
     }
   }
 
+  // 🔔 রিসিভ নম্বর চাওয়া সহ বিল পরিশোধ অপশন
   async function payBill(id) {
     if (!_user) return;
     const client = _cache.find(c => c.id === id);
     if (!client) return;
 
-    if (confirm(`আপনি কি ${id} - এর বিল (৳${client.billAmount}) সংগ্রহ নিশ্চিত করতে চান?`)) {
-      toggleLoader(true, "বিল পরিশোধের তথ্য আপডেট হচ্ছে...");
-      try {
-        const baseFee = Number(client.monthlyPackageFee || client.billAmount || 0);
-        await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
-          status: 'Paid',
-          billAmount: baseFee, 
-          paidAt: Date.now()
-        });
-      } catch (e) { alert("ত্রুটি: " + e.message); } 
-      finally { toggleLoader(false); }
-    }
+    // পপ-আপ উইন্ডো (Prompt) খুলে রিসিভ নম্বর চাওয়া হচ্ছে
+    const receiptInput = prompt(`গ্রাহক: ${client.name} (${id})\nমোট বিল: ৳${client.billAmount}\n\nঅনুগৃহ করে রিসিভ / ভাউচার / TrxID নম্বরটি লিখুন (ঐচ্ছিক):`);
+    
+    // ক্যানসেল চাপলে কোনো কাজ হবে না
+    if (receiptInput === null) return;
+
+    toggleLoader(true, "বিল পরিশোধের তথ্য আপডেট হচ্ছে...");
+    try {
+      const baseFee = Number(client.monthlyPackageFee || client.billAmount || 0);
+      await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
+        status: 'Paid',
+        billAmount: baseFee, 
+        receiptNo: receiptInput.trim() || 'N/A', // রিসিভ নম্বর সেভ করা হচ্ছে
+        paidAt: Date.now()
+      });
+    } catch (e) { alert("ত্রুটি: " + e.message); } 
+    finally { toggleLoader(false); }
   }
 
   async function generateSingleBill(id) {
@@ -764,6 +775,7 @@
       try {
         await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
           status: 'Unpaid',
+          receiptNo: '', // রিসেট করলে রিসিভ নম্বর মুছে যাবে
           lastUpdatedMonth: getCurrentMonthKey()
         });
       } catch (e) { alert("ত্রুটি: " + e.message); } 
@@ -881,6 +893,7 @@
       billAmount: amount,
       monthlyPackageFee: amount,
       status: document.getElementById('paymentStatus').value,
+      receiptNo: '',
       enabled: true,
       lastUpdatedMonth: getCurrentMonthKey(),
       updatedAt: Date.now()
