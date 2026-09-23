@@ -129,51 +129,51 @@
       </div>
 
       <div class="row">
-        <!-- Sidebar Controls -->
-        <div class="col-lg-4 mb-4">
+        <!-- Sidebar Controls (ছোট করা হয়েছে: col-lg-3) -->
+        <div class="col-lg-3 mb-4">
           <!-- Add Single Client Form -->
-          <div class="card card-custom p-4">
-            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-2 text-primary"></i>নতুন ক্লায়েন্ট এন্ট্রি</h5>
+          <div class="card card-custom p-3">
+            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-1 text-primary"></i>নতুন ক্লায়েন্ট এন্ট্রি</h6>
             <form id="clientForm">
               <div class="mb-2">
-                <label class="form-label fw-semibold small">MikroTik Username / ID</label>
-                <input type="text" id="clientId" class="form-control form-control-sm" placeholder="যেমন: 41younus88" required>
+                <label class="form-label fw-semibold small mb-1">Username / ID</label>
+                <input type="text" id="clientId" class="form-control form-control-sm" placeholder="41younus88" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small">গ্রাহকের নাম</label>
-                <input type="text" id="clientName" class="form-control form-control-sm" placeholder="যেমন: Younus" required>
+                <label class="form-label fw-semibold small mb-1">গ্রাহকের নাম</label>
+                <input type="text" id="clientName" class="form-control form-control-sm" placeholder="Younus" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small">মোবাইল নম্বর</label>
+                <label class="form-label fw-semibold small mb-1">মোবাইল নম্বর</label>
                 <input type="text" id="clientPhone" class="form-control form-control-sm" placeholder="01920060010" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small">প্যাকেজ (Package)</label>
-                <input type="text" id="clientPackage" class="form-control form-control-sm" placeholder="যেমন: SAM_630TK_I_Vat" required>
+                <label class="form-label fw-semibold small mb-1">প্যাকেজ (Package)</label>
+                <input type="text" id="clientPackage" class="form-control form-control-sm" placeholder="SAM_630TK_I_Vat" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small">মাসিক বিল (৳)</label>
+                <label class="form-label fw-semibold small mb-1">মাসিক বিল (৳)</label>
                 <input type="number" id="billAmount" class="form-control form-control-sm" placeholder="630" min="0" required>
               </div>
               <div class="mb-3">
-                <label class="form-label fw-semibold small">বিলিং স্ট্যাটাস</label>
+                <label class="form-label fw-semibold small mb-1">বিলিং স্ট্যাটাস</label>
                 <select id="paymentStatus" class="form-select form-select-sm" required>
                   <option value="Paid">Paid</option>
                   <option value="Unpaid">Unpaid</option>
                 </select>
               </div>
-              <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
+              <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold shadow-sm py-2">
                 <i class="fa-solid fa-cloud-arrow-up me-1"></i> সেভ করুন
               </button>
             </form>
           </div>
         </div>
 
-        <!-- Table Display Area -->
-        <div class="col-lg-8">
+        <!-- Table Display Area (বড় করা হয়েছে: col-lg-9) -->
+        <div class="col-lg-9">
           <div class="table-container mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <input type="text" id="searchInput" onkeyup="filterData()" class="form-control form-control-sm shadow-sm" style="width: 200px;" placeholder="🔍 খুঁজুন (Username, Phone)...">
+              <input type="text" id="searchInput" onkeyup="filterData()" class="form-control form-control-sm shadow-sm" style="width: 250px;" placeholder="🔍 খুঁজুন (Username, Phone, Name)...">
               <div class="d-flex gap-2 flex-wrap">
                 <!-- WhatsApp Bulk Button -->
                 <button onclick="sendBulkWhatsApp()" class="btn btn-success btn-sm fw-bold">
