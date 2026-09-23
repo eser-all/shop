@@ -132,14 +132,14 @@
         <!-- Sidebar Controls -->
         <div class="col-lg-3 mb-4">
           <div class="card card-custom p-3">
-            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-1 text-primary"></i>নতুন ক্লায়েন্ট এন্ট্রি</h6>
+            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-1 text-primary"></i>নতুন কাস্টমার যুক্ত করুন</h6>
             <form id="clientForm">
               <div class="mb-2">
                 <label class="form-label fw-semibold small mb-1">Username / ID</label>
                 <input type="text" id="clientId" class="form-control form-control-sm" placeholder="41younus88" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small mb-1">পাসওয়ার্ড (MikroTik Pass)</label>
+                <label class="form-label fw-semibold small mb-1">পাসওয়ার্ড (Password)</label>
                 <input type="text" id="clientPassword" class="form-control form-control-sm" placeholder="123456" required>
               </div>
               <div class="mb-2">
@@ -150,9 +150,8 @@
                 <label class="form-label fw-semibold small mb-1">মোবাইল নম্বর</label>
                 <input type="text" id="clientPhone" class="form-control form-control-sm" placeholder="01920060010" required>
               </div>
-              <!-- 📍 এড্রেস / ঠিকানা ফিল্ড যুক্ত করা হলো -->
               <div class="mb-2">
-                <label class="form-label fw-semibold small mb-1">এড্রেস / ঠিকানা</label>
+                <label class="form-label fw-semibold small mb-1">ঠিকানা (Address)</label>
                 <input type="text" id="clientAddress" class="form-control form-control-sm" placeholder="বাসা-১২, রোড-০৫, ঢাকা">
               </div>
               <div class="mb-2">
@@ -192,7 +191,7 @@
           <div class="table-container mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div class="d-flex align-items-center gap-2">
-                <input type="text" id="searchInput" oninput="debouncedFilter()" class="form-control form-control-sm shadow-sm" style="width: 250px;" placeholder="🔍 ID / নাম / ফোন / এড্রেস খুঁজুন...">
+                <input type="text" id="searchInput" oninput="debouncedFilter()" class="form-control form-control-sm shadow-sm" style="width: 250px;" placeholder="🔍 ID / নাম / ফোন / ঠিকানা খুঁজুন...">
                 
                 <button onclick="showAllClients()" class="btn btn-sm btn-outline-secondary fw-bold" title="সব গ্রাহক একসাথে দেখুন">
                   <i class="fa-solid fa-users me-1"></i> সব কাস্টমার
@@ -232,7 +231,7 @@
                   <tr>
                     <th>Username / ID</th>
                     <th>Password</th>
-                    <th>নাম, ফোন & এড্রেস</th>
+                    <th>নাম, মোবাইল & ঠিকানা</th>
                     <th>প্যাকেজ</th>
                     <th>বিল</th>
                     <th>বিল স্ট্যাটাস</th>
@@ -278,9 +277,8 @@
             <label class="form-label fw-semibold small">মোবাইল নম্বর</label>
             <input type="text" id="editClientPhone" class="form-control form-control-sm" required>
           </div>
-          <!-- 📍 এডিট ফর্মে এড্রেস যুক্ত করা হলো -->
           <div class="mb-2">
-            <label class="form-label fw-semibold small">এড্রেস / ঠিকানা</label>
+            <label class="form-label fw-semibold small">ঠিকানা (Address)</label>
             <input type="text" id="editClientAddress" class="form-control form-control-sm">
           </div>
           <div class="mb-2">
@@ -634,11 +632,10 @@
         ? `<button onclick="toggleAccount('${item.id}', false)" class="btn btn-sm btn-warning me-1" title="ডিজেবল করুন"><i class="fa-solid fa-ban"></i></button>`
         : `<button onclick="toggleAccount('${item.id}', true)" class="btn btn-sm btn-info text-white me-1" title="ইনেবল করুন"><i class="fa-solid fa-check-circle"></i></button>`;
 
-      const editBtn = `<button onclick="openEditModal('${item.id}')" class="btn btn-sm btn-outline-primary me-1" title="এডিট করুন"><i class="fa-solid fa-pen-to-square"></i></button>`;
+      const editBtn = `<button onclick="openEditModal('${item.id}')" class="btn btn-sm btn-outline-primary" title="এডিট করুন"><i class="fa-solid fa-pen-to-square"></i></button>`;
 
-      // 📍 ঠিকানা প্রদর্শন
       const addressDisplay = item.address 
-        ? `<div class="small text-secondary"><i class="fa-solid fa-location-dot text-danger me-1"></i>${item.address}</div>`
+        ? `<div class="small text-secondary mt-1"><i class="fa-solid fa-location-dot text-danger me-1"></i>${item.address}</div>`
         : '';
 
       rowsHtml += `
@@ -647,7 +644,7 @@
             <div class="fw-bold text-dark">${item.id}</div>
             <small class="text-muted">${item.pop || ''}</small>
           </td>
-          <td><code class="text-dark bg-light px-2 py-1 rounded" title="পাসওয়ার্ড">${item.password || 'N/A'}</code></td>
+          <td><code class="text-dark bg-light px-2 py-1 rounded border" title="পাসওয়ার্ড">${item.password || 'N/A'}</code></td>
           <td>
             <div class="fw-semibold text-primary">${item.name}</div>
             <div class="small text-muted"><i class="fa-solid fa-phone me-1"></i>${item.phone || 'N/A'}</div>
@@ -665,9 +662,6 @@
               ${singleBillGenBtn}
               ${editBtn}
               ${toggleEnableBtn}
-              <button onclick="deleteClient('${item.id}')" class="btn btn-sm btn-outline-danger" title="ডিলিট">
-                <i class="fa-solid fa-trash"></i>
-              </button>
             </div>
           </td>
         </tr>
@@ -902,16 +896,6 @@
       toggleLoader(false);
     }
   });
-
-  async function deleteClient(id) {
-    if (confirm("ক্লায়েন্টের ডাটা ডিলিট করতে চান?")) {
-      toggleLoader(true);
-      try {
-        await _db.ref(`users/${_user.uid}/isp_clients/${id}`).remove();
-      } catch (e) { alert("ত্রুটি: " + e.message); } 
-      finally { toggleLoader(false); }
-    }
-  }
 
   setInterval(fetchMikrotikLiveStatus, 15000);
 </script>
