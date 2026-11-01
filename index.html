@@ -516,22 +516,19 @@
     }
   });
 
-  function _xFetch() {
-    if (!_usr) return;
-    _db.ref('/').on('value', (snap) => {
-      _dCache = [];
-      const val = snap.val();
-      if (val) {
-        // এখানে রুট থেকে ডাটাগুলো অ্যারে বা অবজেক্ট হিসেবে লুপ চালিয়ে নিতে হবে
-        Object.keys(val).forEach(k => {
-          let it = val[k]; 
-          it.id = k; 
-          _dCache.push(it);
-        });
-        _dCache.sort((a, b) => b.timestamp - a.timestamp);
-      }
-      _xFil();
-    });
+  function logout() { _auth.signOut(); }
+
+  // Load Firebase Clients
+  function loadClients() {
+    if (_user) {
+      _db.ref(`users/${_user.uid}/isp_clients`).on('value', (snap) => {
+        const val = snap.val();
+        _cache = val ? Object.values(val) : [];
+        checkAutoBillGen();
+        updateSummaryStats();
+        filterData();
+      });
+    }
   }
 
   async function checkAutoBillGen() {
