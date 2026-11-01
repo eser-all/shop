@@ -49,10 +49,7 @@
       70% { box-shadow: 0 0 0 6px rgba(25, 135, 84, 0); }
       100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
     }
-    .tag-badge {
-      cursor: pointer;
-      user-select: none;
-    }
+    .tag-badge { cursor: pointer; user-select: none; }
   </style>
 </head>
 <body>
@@ -196,14 +193,12 @@
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div class="d-flex align-items-center gap-2">
                 <input type="text" id="searchInput" oninput="debouncedFilter()" class="form-control form-control-sm shadow-sm" style="width: 250px;" placeholder="🔍 ID / নাম / ফোন / ঠিকানা খুঁজুন...">
-                
                 <button onclick="showAllClients()" class="btn btn-sm btn-outline-secondary fw-bold" title="সব গ্রাহক একসাথে দেখুন">
                   <i class="fa-solid fa-users me-1"></i> সব কাস্টমার
                 </button>
               </div>
 
               <div class="d-flex gap-2 flex-wrap">
-                <!-- ✉️ SMS / WHATSAPP BULK CUSTOM MODAL TRIGGER BUTTON -->
                 <button onclick="openCustomSmsModal()" class="btn btn-warning btn-sm fw-bold shadow-sm">
                   <i class="fa-solid fa-envelope me-1"></i> SMS Text Box
                 </button>
@@ -315,7 +310,7 @@
   </div>
 </div>
 
-<!-- 📩 Custom SMS & Bulk WhatsApp Modal -->
+<!-- Custom SMS Modal -->
 <div class="modal fade" id="customSmsModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
@@ -332,31 +327,27 @@
             <option value="All">সকল গ্রাহক একসাথে</option>
           </select>
         </div>
-
         <div class="mb-2">
-          <label class="form-label fw-semibold">মেসেজ লিখুন (ডাইনামিক ট্যাগ নির্বাচন করতে ক্লিক করুন):</label>
+          <label class="form-label fw-semibold">মেসেজ লিখুন:</label>
           <div class="d-flex flex-wrap gap-1 mb-2">
-            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{name}')">{name} (গ্রাহকের নাম)</span>
-            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{id}')">{id} (আইডি)</span>
-            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{bill}')">{bill} (টাকার পরিমাণ)</span>
-            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{package}')">{package} (প্যাকেজ)</span>
-            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{month}')">{month} (চলতি মাস)</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{name}')">{name}</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{id}')">{id}</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{bill}')">{bill}</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{package}')">{package}</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{month}')">{month}</span>
           </div>
-          <textarea id="customSmsText" class="form-control" rows="5" placeholder="প্রিয় {name}, আপনার {month} মাসের বিল ৳{bill} টাকা বকেয়া রয়েছে। অনুগ্রহ করে পরিশোধ করুন।"></textarea>
+          <textarea id="customSmsText" class="form-control" rows="5"></textarea>
         </div>
-        <p class="text-muted small mb-0"><i class="fa-solid fa-info-circle me-1"></i>মেসেজ পাঠানোর পর WhatsApp এর মাধ্যমে নির্বাচিত গ্রুপে নোটিশ চলে যাবে।</p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">বন্ধ করুন</button>
-        <button type="button" onclick="sendCustomSmsBulk()" class="btn btn-success fw-bold">
-          <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp-এ সব মেসেজ পাঠান
-        </button>
+        <button type="button" onclick="sendCustomSmsBulk()" class="btn btn-success fw-bold">WhatsApp-এ পাঠান</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- 📱 Single Client Custom SMS Modal -->
+<!-- Single SMS Modal -->
 <div class="modal fade" id="singleSmsModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -371,15 +362,13 @@
           <input type="text" id="singleSmsClientInfo" class="form-control form-control-sm bg-light" readonly>
         </div>
         <div class="mb-3">
-          <label class="form-label fw-semibold small">মেসেজ কাস্টমাইজ করুন:</label>
+          <label class="form-label fw-semibold small">মেসেজ:</label>
           <textarea id="singleSmsText" class="form-control" rows="5"></textarea>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal">বাতিল</button>
-        <button type="button" onclick="executeSingleSms()" class="btn btn-success btn-sm fw-bold">
-          <i class="fa-solid fa-paper-plane me-1"></i> মেসেজ পাঠান
-        </button>
+        <button type="button" onclick="executeSingleSms()" class="btn btn-success btn-sm fw-bold">মেসেজ পাঠান</button>
       </div>
     </div>
   </div>
@@ -400,7 +389,6 @@
   const MIKROTIK_API_URL = 'http://localhost:5000/api/mikrotik/users-status';
   const WHATSAPP_BULK_URL = 'http://localhost:5000/api/whatsapp/send-bulk';
 
-  // Firebase Configuration
   const firebaseConfig = {
     apiKey: "AIzaSyAfq988qijqN69xjUiZPRdiXlfN3-Dtngs",
     authDomain: "isp-billing-92ce2.firebaseapp.com",
@@ -447,7 +435,6 @@
       const customDiv = document.getElementById('customPackageDiv');
       const billInput = document.getElementById('billAmount');
       const selectedOption = select.options[select.selectedIndex];
-      
       if (select.value === 'Custom') {
         customDiv.style.display = 'block';
       } else {
@@ -460,7 +447,6 @@
       const customDiv = document.getElementById('editCustomPackageDiv');
       const billInput = document.getElementById('editBillAmount');
       const selectedOption = select.options[select.selectedIndex];
-      
       if (select.value === 'Custom') {
         customDiv.style.display = 'block';
       } else {
@@ -471,7 +457,6 @@
     }
   }
 
-  // Auth Listener
   _auth.onAuthStateChanged(async (u) => {
     toggleLoader(true);
     try {
@@ -500,7 +485,6 @@
     toggleLoader(true);
     const errorEl = document.getElementById('authError');
     errorEl.style.display = 'none';
-
     try {
       await _auth.signInWithEmailAndPassword(
         document.getElementById('authEmail').value,
@@ -508,9 +492,7 @@
       );
     } catch (e) {
       errorEl.style.display = 'block';
-      errorEl.innerText = e.code === 'auth/operation-not-allowed' 
-        ? "Firebase Console-এ Email/Password অপশনটি Enable করুন!" 
-        : "লগইন তথ্য ভুল হয়েছে!";
+      errorEl.innerText = "লগইন তথ্য ভুল হয়েছে!";
     } finally {
       toggleLoader(false);
     }
@@ -518,27 +500,26 @@
 
   function logout() { _auth.signOut(); }
 
-  // 🔄 মাল্টি-পাথ ডাটা লোডিং (রুট এবং ইউজার ফোল্ডার উভয় স্থান থেকে সব ইউজারের ডাটা একসাথে লোড করার লজিক)
+  // 🔄 মাল্টি-পাথ সার্বজনীন ডাটা লোডিং (রুট এবং যেকোনো ইউজারের ফোল্ডারের সব ডাটা একসাথে দেখাবে)
   function loadClients() {
     if (!_user) return;
     
-    // সরাসরি রুট('/') থেকে সমস্ত ডাটা একসাথে ফেচ করা হচ্ছে
     _db.ref('/').on('value', (snap) => {
       _cache = [];
       const rootData = snap.val();
 
       if (rootData) {
-        // ১. যদি ডাটা সরাসরি রুটেই সেভ থাকে (যেমন: 1000, 1001, 1517 ইত্যাদি আইডি নোড)
+        // ১. সরাসরি রুটে থাকা ডাটা (যেমন: 1000, 1001 ইত্যাদি আইডি)
         Object.keys(rootData).forEach(key => {
           const item = rootData[key];
           if (typeof item === 'object' && item !== null && (item.name || item.billAmount || item.password)) {
             item.id = item.id || key;
-            item._isRootData = true; // ফ্ল্যাগ সেট করা হলো যাতে পরবর্তীতে আপডেট পাথ সঠিক থাকে
+            item._sourceType = 'root';
             _cache.push(item);
           }
         });
 
-        // ২. যদি ডাটা যেকোনো ইউজারের users/{uid}/isp_clients নোডের ভেতরে থাকে
+        // ২. যেকোনো ইউজারের users/{uid}/isp_clients ফোল্ডারে থাকা ডাটা
         if (rootData.users) {
           Object.keys(rootData.users).forEach(uid => {
             const userObj = rootData.users[uid];
@@ -547,8 +528,8 @@
                 const client = userObj.isp_clients[ckey];
                 if (client && typeof client === 'object') {
                   client.id = client.id || ckey;
-                  client._uidPath = uid; // কোন ইউজারের আন্ডারে আছে তা সংরক্ষণ
-                  // ডুপ্লিকেট এড়াতে আইডি চেক করে পুশ করা
+                  client._sourceType = 'user';
+                  client._uidPath = uid;
                   if (!_cache.some(c => c.id.toString() === client.id.toString())) {
                     _cache.push(client);
                   }
@@ -578,15 +559,13 @@
         if (item.lastUpdatedMonth !== currentMonthKey && item.id) {
           const basePackageFee = Number(item.monthlyPackageFee || item.billAmount || 0);
           const currentBill = Number(item.billAmount || 0);
-
           let newBillAmount = basePackageFee;
 
           if (item.status === 'Unpaid') {
             newBillAmount = currentBill + basePackageFee;
           }
 
-          // সঠিক পাথে আপডেট নির্ধারণ
-          const targetPath = item._isRootData ? item.id : `users/${item._uidPath || _user.uid}/isp_clients/${item.id}`;
+          const targetPath = item._sourceType === 'root' ? item.id : `users/${item._uidPath || _user.uid}/isp_clients/${item.id}`;
           
           updates[`${targetPath}/billAmount`] = newBillAmount;
           updates[`${targetPath}/monthlyPackageFee`] = basePackageFee;
@@ -631,9 +610,7 @@
 
   function debouncedFilter() {
     clearTimeout(filterTimeout);
-    filterTimeout = setTimeout(() => {
-      filterData();
-    }, 100); 
+    filterTimeout = setTimeout(() => { filterData(); }, 100); 
   }
 
   function filterData() {
@@ -683,15 +660,12 @@
 
   function updateSummaryStats() {
     let totalPaid = 0, totalUnpaid = 0;
-    
     for (let i = 0; i < _cache.length; i++) {
       const item = _cache[i];
       if (item.status === 'Paid') totalPaid += Number(item.billAmount || 0);
       else totalUnpaid += Number(item.billAmount || 0);
     }
-
     const totalOnlineCount = Object.keys(_mikrotikStatusMap).length;
-
     document.getElementById('statTotalClients').innerText = _cache.length;
     document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
@@ -708,111 +682,52 @@
     }
 
     let rowsHtml = '';
-
     for (let i = 0; i < renderCount; i++) {
       const item = records[i];
-      
       const itemKey = item.id ? item.id.toString().trim().toLowerCase() : '';
       const mkData = _mikrotikStatusMap[itemKey];
       const isOnline = mkData && mkData.status === 'Online';
       const isEnabled = item.enabled !== false; 
 
       const receiptDisplay = item.receiptNo ? `<div class="small text-success fw-bold mt-1"><i class="fa-solid fa-receipt me-1"></i>${item.receiptNo}</div>` : '';
-
-      const billBadge = item.status === 'Paid' 
-        ? `<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Paid</span>${receiptDisplay}` 
-        : '<span class="badge bg-danger"><i class="fa-solid fa-clock me-1"></i>Unpaid</span>';
-
-      const accountStatusBadge = isEnabled
-        ? `<span class="badge bg-success-subtle text-success border border-success">Enabled</span>`
-        : `<span class="badge bg-secondary-subtle text-danger border border-danger">Disabled</span>`;
-
-      const liveBadge = isOnline
-        ? `<span class="badge status-badge bg-success-subtle text-success border border-success"><i class="pulse-online"></i> Online</span>`
-        : `<span class="badge status-badge bg-secondary-subtle text-secondary">Offline</span>`;
+      const billBadge = item.status === 'Paid' ? `<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Paid</span>${receiptDisplay}` : '<span class="badge bg-danger"><i class="fa-solid fa-clock me-1"></i>Unpaid</span>';
+      const accountStatusBadge = isEnabled ? `<span class="badge bg-success-subtle text-success border border-success">Enabled</span>` : `<span class="badge bg-secondary-subtle text-danger border border-danger">Disabled</span>`;
+      const liveBadge = isOnline ? `<span class="badge status-badge bg-success-subtle text-success border border-success"><i class="pulse-online"></i> Online</span>` : `<span class="badge status-badge bg-secondary-subtle text-secondary">Offline</span>`;
 
       let phoneClean = (item.phone || '').replace(/[^0-9]/g, '');
-      if (phoneClean.length > 0 && !phoneClean.startsWith('88')) {
-        phoneClean = '88' + phoneClean;
-      }
+      if (phoneClean.length > 0 && !phoneClean.startsWith('88')) phoneClean = '88' + phoneClean;
       
-      const waUnpaidMsg = encodeURIComponent(
-        `প্রিয় ${item.name},\n` +
-        `আপনার ইন্টারনেট বিলের বিবরণ:\n` +
-        `মাসের নাম: ${getCurrentMonthKey()}\n` +
-        `বিল পরিমাণ: ৳${item.billAmount}\n` +
-        `স্ট্যাটাস: Unpaid\n\n` +
-        `অনুগৃহ করে দ্রুত বিল পরিশোধ নিশ্চিত করুন। ধন্যবাদ!`
-      );
-
-      const waPaidMsg = encodeURIComponent(
-        `প্রিয় ${item.name},\n` +
-        `আপনার ইন্টারনেট বিল পরিশোধ সম্পন্ন হয়েছে।\n\n` +
-        `প্যাকেজ: ${item.package}\n` +
-        `পরিশোধিত বিল: ৳${item.billAmount}\n` +
-        `রিসিভ/TrxID নম্বর: ${item.receiptNo || 'N/A'}\n\n` +
-        `বিল পরিশোধ করার জন্য আপনাকে অসংখ্য ধন্যবাদ!`
-      );
-
+      const waUnpaidMsg = encodeURIComponent(`প্রিয় ${item.name},\nআপনার ইন্টারনেট বিল ৳${item.billAmount} টাকা Unpaid রয়েছে। দ্রুত পরিশোধ করুন। ধন্যবাদ!`);
+      const waPaidMsg = encodeURIComponent(`প্রিয় ${item.name},\nআপনার বিল পরিশোধ সফল হয়েছে। রিসিভ নম্বর: ${item.receiptNo || 'N/A'}\nধন্যবাদ!`);
       const msgToSend = item.status === 'Paid' ? waPaidMsg : waUnpaidMsg;
 
-      const whatsappSingleBtn = phoneClean ? 
-        `<a href="https://wa.me/${phoneClean}?text=${msgToSend}" target="_blank" class="btn btn-sm btn-outline-success me-1" title="WhatsApp এ মেসেজ দিন"><i class="fa-brands fa-whatsapp"></i></a>` : '';
-
-      const customSmsSingleBtn = `<button onclick="openSingleSmsModal('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="কাস্টম SMS টেক্সট পাঠান"><i class="fa-solid fa-envelope"></i></button>`;
-
-      const payButton = item.status === 'Unpaid' 
-        ? `<button onclick="payBill('${item.id}')" class="btn btn-sm btn-success me-1" title="বিল পরিশোধ করুন"><i class="fa-solid fa-money-bill-wave me-1"></i>Pay</button>`
-        : `<button disabled class="btn btn-sm btn-outline-secondary me-1" title="বিল পরিশোধিত"><i class="fa-solid fa-check"></i></button>`;
-
-      const singleBillGenBtn = `<button onclick="generateSingleBill('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="বিল Unpaid করুন"><i class="fa-solid fa-rotate-right"></i></button>`;
-
-      const toggleEnableBtn = isEnabled
-        ? `<button onclick="toggleAccount('${item.id}', false)" class="btn btn-sm btn-warning me-1" title="ডিজেবল করুন"><i class="fa-solid fa-ban"></i></button>`
-        : `<button onclick="toggleAccount('${item.id}', true)" class="btn btn-sm btn-info text-white me-1" title="ইনেবল করুন"><i class="fa-solid fa-check-circle"></i></button>`;
-
-      const editBtn = `<button onclick="openEditModal('${item.id}')" class="btn btn-sm btn-outline-primary" title="এডিট করুন"><i class="fa-solid fa-pen-to-square"></i></button>`;
-
-      const addressDisplay = item.address 
-        ? `<div class="small text-secondary mt-1"><i class="fa-solid fa-location-dot text-danger me-1"></i>${item.address}</div>`
-        : '';
+      const whatsappSingleBtn = phoneClean ? `<a href="https://wa.me/${phoneClean}?text=${msgToSend}" target="_blank" class="btn btn-sm btn-outline-success me-1" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>` : '';
+      const customSmsSingleBtn = `<button onclick="openSingleSmsModal('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="SMS"><i class="fa-solid fa-envelope"></i></button>`;
+      const payButton = item.status === 'Unpaid' ? `<button onclick="payBill('${item.id}')" class="btn btn-sm btn-success me-1" title="Pay"><i class="fa-solid fa-money-bill-wave me-1"></i>Pay</button>` : `<button disabled class="btn btn-sm btn-outline-secondary me-1"><i class="fa-solid fa-check"></i></button>`;
+      const singleBillGenBtn = `<button onclick="generateSingleBill('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="Reset"><i class="fa-solid fa-rotate-right"></i></button>`;
+      const toggleEnableBtn = isEnabled ? `<button onclick="toggleAccount('${item.id}', false)" class="btn btn-sm btn-warning me-1" title="Disable"><i class="fa-solid fa-ban"></i></button>` : `<button onclick="toggleAccount('${item.id}', true)" class="btn btn-sm btn-info text-white me-1" title="Enable"><i class="fa-solid fa-check-circle"></i></button>`;
+      const editBtn = `<button onclick="openEditModal('${item.id}')" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>`;
+      const addressDisplay = item.address ? `<div class="small text-secondary mt-1"><i class="fa-solid fa-location-dot text-danger me-1"></i>${item.address}</div>` : '';
 
       rowsHtml += `
         <tr>
-          <td>
-            <div class="fw-bold text-dark">${item.id}</div>
-            <small class="text-muted">${item.pop || ''}</small>
-          </td>
-          <td><code class="text-dark bg-light px-2 py-1 rounded border" title="পাসওয়ার্ড">${item.password || 'N/A'}</code></td>
-          <td>
-            <div class="fw-semibold text-primary">${item.name}</div>
-            <div class="small text-muted"><i class="fa-solid fa-phone me-1"></i>${item.phone || 'N/A'}</div>
-            ${addressDisplay}
-          </td>
+          <td><div class="fw-bold text-dark">${item.id}</div></td>
+          <td><code class="text-dark bg-light px-2 py-1 rounded border">${item.password || 'N/A'}</code></td>
+          <td><div class="fw-semibold text-primary">${item.name}</div><small class="text-muted">${item.phone || 'N/A'}</small>${addressDisplay}</td>
           <td><span class="badge bg-info text-dark">${item.package}</span></td>
           <td class="fw-bold">৳ ${Number(item.billAmount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
           <td>${billBadge}</td>
           <td>${accountStatusBadge}</td>
           <td>${liveBadge}</td>
-          <td class="text-center">
-            <div class="d-flex justify-content-center align-items-center">
-              ${whatsappSingleBtn}
-              ${customSmsSingleBtn}
-              ${payButton}
-              ${singleBillGenBtn}
-              ${editBtn}
-              ${toggleEnableBtn}
-            </div>
-          </td>
+          <td class="text-center"><div class="d-flex justify-content-center align-items-center">${whatsappSingleBtn}${customSmsSingleBtn}${payButton}${singleBillGenBtn}${editBtn}${toggleEnableBtn}</div></td>
         </tr>
       `;
     }
     tbody.innerHTML = rowsHtml;
   }
 
-  // ✉️ CUSTOM SMS / WHATSAPP MODAL FUNCTIONS
   function openCustomSmsModal() {
-    document.getElementById('customSmsText').value = `প্রিয় {name},\nআপনার {month} মাসের ইন্টারনেট বিল ৳{bill} টাকা। বকেয়া বিলটি দ্রুত পরিশোধ করার জন্য অনুরোধ করা হচ্ছে।\nধন্যবাদ!`;
+    document.getElementById('customSmsText').value = `প্রিয় {name},\nআপনার {month} মাসের ইন্টারনেট বিল ৳{bill} টাকা বকেয়া রয়েছে। অনুগ্রহ করে পরিশোধ করুন।`;
     customSmsModalInstance.show();
   }
 
@@ -820,164 +735,80 @@
     const textarea = document.getElementById('customSmsText');
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = textarea.value;
-    textarea.value = text.substring(0, start) + tag + text.substring(end);
+    textarea.value = textarea.value.substring(0, start) + tag + textarea.value.substring(end);
     textarea.focus();
-    textarea.selectionStart = textarea.selectionEnd = start + tag.length;
   }
 
   async function sendCustomSmsBulk() {
     const group = document.getElementById('smsRecipientGroup').value;
     const templateText = document.getElementById('customSmsText').value.trim();
-
-    if (!templateText) {
-      return alert("অনুগ্রহ করে কিছু মেসেজ লিখুন!");
-    }
+    if (!templateText) return alert("মেসেজ লিখুন!");
 
     let targetClients = _cache;
     if (group === 'Unpaid') targetClients = _cache.filter(c => c.status === 'Unpaid');
     else if (group === 'Paid') targetClients = _cache.filter(c => c.status === 'Paid');
 
-    if (targetClients.length === 0) {
-      return alert("নির্বাচিত গ্রুপে কোনো গ্রাহক পাওয়া যায়নি!");
-    }
+    if (targetClients.length === 0) return alert("গ্রাহক পাওয়া যায়নি!");
 
-    if (confirm(`${targetClients.length} জন গ্রাহককে কাস্টম মেসেজ পাঠাতে চান?`)) {
-      const preparedList = targetClients.map(item => {
-        let msg = templateText
-          .replace(/{name}/g, item.name || '')
-          .replace(/{id}/g, item.id || '')
-          .replace(/{bill}/g, item.billAmount || '0')
-          .replace(/{package}/g, item.package || '')
-          .replace(/{month}/g, getCurrentMonthKey());
-
-        return {
-          id: item.id,
-          name: item.name,
-          phone: item.phone,
-          customMessage: msg
-        };
-      });
-
-      toggleLoader(true, "WhatsApp-এ সবার কাছে কাস্টম মেসেজ পাঠানো হচ্ছে...");
+    if (confirm(`${targetClients.length} জন গ্রাহককে মেসেজ পাঠাতে চান?`)) {
+      const preparedList = targetClients.map(item => ({
+        id: item.id,
+        name: item.name,
+        phone: item.phone,
+        customMessage: templateText.replace(/{name}/g, item.name || '').replace(/{id}/g, item.id || '').replace(/{bill}/g, item.billAmount || '0').replace(/{package}/g, item.package || '').replace(/{month}/g, getCurrentMonthKey())
+      }));
       try {
-        const res = await fetch(WHATSAPP_BULK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ clients: preparedList, isCustomText: true })
-        });
+        const res = await fetch(WHATSAPP_BULK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clients: preparedList, isCustomText: true }) });
         const result = await res.json();
-        if (result.success) {
-          alert(`মেসেজ সফলভাবে প্রসেস করা হয়েছে!`);
-          customSmsModalInstance.hide();
-        } else {
-          alert("ত্রুটি: " + result.message);
-        }
-      } catch (err) {
-        alert("WhatsApp সার্ভারে সংযোগ করা সম্ভব হয়নি! আপনার Node.js সার্ভার চালু আছে কিনা তা নিশ্চিত করুন।");
-      } finally {
-        toggleLoader(false);
-      }
+        if (result.success) { alert("সফল!"); customSmsModalInstance.hide(); }
+      } catch (err) { alert("সার্ভার কানেকশন ব্যর্থ!"); }
     }
   }
 
   function openSingleSmsModal(id) {
     const client = _cache.find(c => c.id == id);
     if (!client) return;
-
     let phoneClean = (client.phone || '').replace(/[^0-9]/g, '');
-    if (phoneClean.length > 0 && !phoneClean.startsWith('88')) {
-      phoneClean = '88' + phoneClean;
-    }
-
-    if (!phoneClean) {
-      return alert("গ্রাহকের কোনো সঠিক মোবাইল নম্বর পাওয়া যায়নি!");
-    }
-
+    if (phoneClean && !phoneClean.startsWith('88')) phoneClean = '88' + phoneClean;
     document.getElementById('singleSmsPhone').value = phoneClean;
-    document.getElementById('singleSmsClientInfo').value = `${client.name} (${client.id}) - ${client.phone}`;
-    document.getElementById('singleSmsText').value = `প্রিয় ${client.name},\nআপনার প্যাকেজ: ${client.package}\nবিল: ৳${client.billAmount}\nস্ট্যাটাস: ${client.status}\n\nধন্যবাদ!`;
-    
+    document.getElementById('singleSmsClientInfo').value = `${client.name} (${client.id})`;
+    document.getElementById('singleSmsText').value = `প্রিয় ${client.name},\nআপনার বিল ৳${client.billAmount}\nধন্যবাদ!`;
     singleSmsModalInstance.show();
   }
 
   function executeSingleSms() {
     const phone = document.getElementById('singleSmsPhone').value;
     const text = document.getElementById('singleSmsText').value.trim();
-
-    if (!text) return alert("মেসেজ খালি রাখা যাবে না!");
-
-    const encodedText = encodeURIComponent(text);
-    window.open(`https://wa.me/${phone}?text=${encodedText}`, '_blank');
+    if (!text) return;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
     singleSmsModalInstance.hide();
   }
 
   function downloadCSV(type) {
     let dataToExport = _cache;
+    if (type === 'Paid') dataToExport = _cache.filter(c => c.status === 'Paid');
+    else if (type === 'Unpaid') dataToExport = _cache.filter(c => c.status === 'Unpaid');
+    if (dataToExport.length === 0) return alert("ডাটা নেই!");
 
-    if (type === 'Paid') {
-      dataToExport = _cache.filter(c => c.status === 'Paid');
-    } else if (type === 'Unpaid') {
-      dataToExport = _cache.filter(c => c.status === 'Unpaid');
-    }
-
-    if (dataToExport.length === 0) {
-      return alert("ডাউনলোড করার জন্য কোনো ডাটা পাওয়া যায়নি!");
-    }
-
-    let csvContent = "\uFEFF";
-    csvContent += "Username/ID,Password,Name,Phone,Address,Package,Bill Amount,Status,Receipt No\n";
-
+    let csvContent = "\uFEFFUsername/ID,Password,Name,Phone,Address,Package,Bill Amount,Status,Receipt No\n";
     dataToExport.forEach(item => {
-      const row = [
-        `"${item.id || ''}"`,
-        `"${item.password || ''}"`,
-        `"${item.name || ''}"`,
-        `"${item.phone || ''}"`,
-        `"${item.address || ''}"`,
-        `"${item.package || ''}"`,
-        `"${item.billAmount || 0}"`,
-        `"${item.status || ''}"`,
-        `"${item.receiptNo || ''}"`
-      ];
-      csvContent += row.join(",") + "\n";
+      csvContent += `"${item.id || ''}","${item.password || ''}","${item.name || ''}","${item.phone || ''}","${item.address || ''}","${item.package || ''}","${item.billAmount || 0}","${item.status || ''}","${item.receiptNo || ''}"\n`;
     });
-
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `ISP_Billing_${type}_Report_${getCurrentMonthKey()}.csv`);
-    document.body.appendChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = `ISP_Billing_${type}_${getCurrentMonthKey()}.csv`;
     link.click();
-    document.body.removeChild(link);
   }
 
   async function sendBulkWhatsApp() {
     const unpaidClients = _cache.filter(c => c.status === 'Unpaid');
-    if (unpaidClients.length === 0) {
-      return alert("বর্তমানে কোনো Unpaid বিল গ্রাহক পাওয়া যায়নি!");
-    }
-
-    if (confirm(`বর্তমানে ${unpaidClients.length} জন গ্রাহকের বিল Unpaid আছে। আপনি কি সবার নম্বরে WhatsApp নোটিশ পাঠাতে চান?`)) {
-      toggleLoader(true, "WhatsApp-এ সবার কাছে মেসেজ পাঠানো হচ্ছে...");
+    if (unpaidClients.length === 0) return alert("Unpaid গ্রাহক নেই!");
+    if (confirm(`সব Unpaid গ্রাহককে WhatsApp নোটিশ পাঠাবেন?`)) {
       try {
-        const res = await fetch(WHATSAPP_BULK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ clients: unpaidClients, month: getCurrentMonthKey() })
-        });
-        const result = await res.json();
-        if (result.success) {
-          alert(`সফলভাবে মেসেজ পাঠানো সম্পন্ন হয়েছে!`);
-        } else {
-          alert("ত্রুটি: " + result.message);
-        }
-      } catch (err) {
-        alert("WhatsApp সার্ভারে সংযোগ করা সম্ভব হয়নি! আপনার Node.js সার্ভার চালু আছে কিনা তা নিশ্চিত করুন।");
-      } finally {
-        toggleLoader(false);
-      }
+        await fetch(WHATSAPP_BULK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clients: unpaidClients, month: getCurrentMonthKey() }) });
+        alert("সফল!");
+      } catch (err) { alert("সার্ভার এরর!"); }
     }
   }
 
@@ -985,104 +816,37 @@
     if (!_user) return;
     const client = _cache.find(c => c.id == id);
     if (!client) return;
-
-    const receiptInput = prompt(`গ্রাহক: ${client.name} (${id})\nমোট বিল: ৳${client.billAmount}\n\nঅনুগৃহ করে রিসিভ / ভাউচার / TrxID নম্বরটি লিখুন:`);
-    
+    const receiptInput = prompt(`গ্রাহক: ${client.name}\nরিসিভ / TrxID নম্বর দিন:`);
     if (receiptInput === null) return;
-
     const receiptNoSaved = receiptInput.trim() || 'N/A';
 
-    toggleLoader(true, "বিল পরিশোধের তথ্য আপডেট হচ্ছে...");
+    toggleLoader(true, "আপডেট হচ্ছে...");
     try {
       const baseFee = Number(client.monthlyPackageFee || client.billAmount || 0);
-      const targetPath = client._isRootData ? id : `users/${client._uidPath || _user.uid}/isp_clients/${id}`;
-      
-      await _db.ref(targetPath).update({ 
-        status: 'Paid',
-        billAmount: baseFee, 
-        receiptNo: receiptNoSaved,
-        paidAt: Date.now()
-      });
-
-      let phoneClean = (client.phone || '').replace(/[^0-9]/g, '');
-      if (phoneClean.length > 0 && !phoneClean.startsWith('88')) {
-        phoneClean = '88' + phoneClean;
-      }
-
-      if (phoneClean) {
-        const confirmSend = confirm(`বিল সফলভাবে পরিশোধিত হয়েছে!\n\nআপনি কি গ্রাহক ${client.name}-কে WhatsApp-এ রিসিভ নম্বরসহ ধন্যবাদ মেসেজ পাঠাতে চান?`);
-        
-        if (confirmSend) {
-          const thankYouText = encodeURIComponent(
-            `প্রিয় ${client.name},\n` +
-            `আপনার ইন্টারনেট বিল পরিশোধ সফল হয়েছে।\n\n` +
-            `প্যাকেজ: ${client.package}\n` +
-            `বিল পরিমাণ: ৳${baseFee}\n` +
-            `রিসিভ/TrxID নম্বর: ${receiptNoSaved}\n\n` +
-            `বিল পরিশোধ করার জন্য আপনাকে অসংখ্য ধন্যবাদ!`
-          );
-          
-          window.open(`https://wa.me/${phoneClean}?text=${thankYouText}`, '_blank');
-        }
-      }
-
-    } catch (e) { 
-      alert("ত্রুটি: " + e.message); 
-    } finally { 
-      toggleLoader(false); 
-    }
+      const targetPath = client._sourceType === 'root' ? id : `users/${client._uidPath || _user.uid}/isp_clients/${id}`;
+      await _db.ref(targetPath).update({ status: 'Paid', billAmount: baseFee, receiptNo: receiptNoSaved, paidAt: Date.now() });
+    } catch (e) { alert(e.message); } finally { toggleLoader(false); }
   }
 
   async function generateSingleBill(id) {
     if (!_user) return;
     const client = _cache.find(c => c.id == id);
     if (!client) return;
-
-    if (confirm(`আপনি কি ${id} - এর জন্য বিল নতুন করে রিসেট/জেনারেট করতে চান?`)) {
-      toggleLoader(true, "বিল জেনারেট হচ্ছে...");
-      try {
-        const targetPath = client._isRootData ? id : `users/${client._uidPath || _user.uid}/isp_clients/${id}`;
-        await _db.ref(targetPath).update({ 
-          status: 'Unpaid',
-          receiptNo: '',
-          lastUpdatedMonth: getCurrentMonthKey()
-        });
-      } catch (e) { alert("ত্রুটি: " + e.message); } 
-      finally { toggleLoader(false); }
+    if (confirm("বিল Unpaid করতে চান?")) {
+      const targetPath = client._sourceType === 'root' ? id : `users/${client._uidPath || _user.uid}/isp_clients/${id}`;
+      await _db.ref(targetPath).update({ status: 'Unpaid', receiptNo: '', lastUpdatedMonth: getCurrentMonthKey() });
     }
   }
 
   function openEditModal(id) {
     const client = _cache.find(c => c.id == id);
     if (!client) return;
-
     document.getElementById('editClientId').value = client.id;
     document.getElementById('editClientIdDisplay').value = client.id;
     document.getElementById('editClientPassword').value = client.password || '';
     document.getElementById('editClientName').value = client.name || '';
     document.getElementById('editClientPhone').value = client.phone || '';
     document.getElementById('editClientAddress').value = client.address || '';
-    
-    const pkgSelect = document.getElementById('editClientPackageSelect');
-    const customDiv = document.getElementById('editCustomPackageDiv');
-    let pkgFound = false;
-
-    for (let i = 0; i < pkgSelect.options.length; i++) {
-      if (pkgSelect.options[i].value === client.package) {
-        pkgSelect.selectedIndex = i;
-        pkgFound = true;
-        break;
-      }
-    }
-
-    if (!pkgFound) {
-      pkgSelect.value = 'Custom';
-      customDiv.style.display = 'block';
-      document.getElementById('editClientPackageCustom').value = client.package || '';
-    } else {
-      customDiv.style.display = 'none';
-    }
-
     document.getElementById('editBillAmount').value = client.billAmount || 0;
     editModalInstance.show();
   }
@@ -1090,55 +854,30 @@
   document.getElementById('editClientForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!_user) return;
-    
     const id = document.getElementById('editClientId').value;
     const client = _cache.find(c => c.id == id);
-    const pkgSelect = document.getElementById('editClientPackageSelect');
-    let pkgName = pkgSelect.value;
-
-    if (pkgName === 'Custom') {
-      pkgName = document.getElementById('editClientPackageCustom').value.trim();
-    }
-
-    const amount = Number(parseFloat(document.getElementById('editBillAmount').value).toFixed(2)) || 0;
+    const amount = Number(document.getElementById('editBillAmount').value) || 0;
 
     const updatedData = {
       password: document.getElementById('editClientPassword').value.trim(),
       name: document.getElementById('editClientName').value.trim(),
       phone: document.getElementById('editClientPhone').value.trim(),
       address: document.getElementById('editClientAddress').value.trim(),
-      package: pkgName,
       billAmount: amount,
-      monthlyPackageFee: amount, 
+      monthlyPackageFee: amount,
       updatedAt: Date.now()
     };
 
-    toggleLoader(true, "ক্লায়েন্টের তথ্য আপডেট করা হচ্ছে...");
-    try {
-      const targetPath = client && client._isRootData ? id : `users/${client && client._uidPath ? client._uidPath : _user.uid}/isp_clients/${id}`;
-      await _db.ref(targetPath).update(updatedData);
-      editModalInstance.hide();
-    } catch (err) {
-      alert("ত্রুটি: " + err.message);
-    } finally {
-      toggleLoader(false);
-    }
+    const targetPath = client && client._sourceType === 'root' ? id : `users/${client && client._uidPath ? client._uidPath : _user.uid}/isp_clients/${id}`;
+    await _db.ref(targetPath).update(updatedData);
+    editModalInstance.hide();
   });
 
   async function toggleAccount(id, enableStatus) {
     if (!_user) return;
     const client = _cache.find(c => c.id == id);
-    const actionText = enableStatus ? "সক্রিয় (Enable)" : "নিষ্ক্রিয় (Disable)";
-    if (confirm(`আপনি কি এই ক্লায়েন্টটি ${actionText} করতে চান?`)) {
-      toggleLoader(true, `অ্যাকাউন্ট ${actionText} করা হচ্ছে...`);
-      try {
-        const targetPath = client && client._isRootData ? id : `users/${client && client._uidPath ? client._uidPath : _user.uid}/isp_clients/${id}`;
-        await _db.ref(targetPath).update({ 
-          enabled: enableStatus 
-        });
-      } catch (e) { alert("ত্রুটি: " + e.message); } 
-      finally { toggleLoader(false); }
-    }
+    const targetPath = client && client._sourceType === 'root' ? id : `users/${client && client._uidPath ? client._uidPath : _user.uid}/isp_clients/${id}`;
+    await _db.ref(targetPath).update({ enabled: enableStatus });
   }
 
   document.getElementById('clientForm').addEventListener('submit', async (e) => {
@@ -1147,14 +886,9 @@
     toggleLoader(true);
 
     const inputId = document.getElementById('clientId').value.trim();
-    const pkgSelect = document.getElementById('clientPackageSelect');
-    let pkgName = pkgSelect.value;
-
-    if (pkgName === 'Custom') {
-      pkgName = document.getElementById('clientPackageCustom').value.trim();
-    }
-
-    const amount = Number(parseFloat(document.getElementById('billAmount').value).toFixed(2)) || 0;
+    const amount = Number(document.getElementById('billAmount').value) || 0;
+    const pkgSelect = document.getElementById('clientPackageSelect').value;
+    const pkgName = pkgSelect === 'Custom' ? document.getElementById('clientPackageCustom').value.trim() : pkgSelect;
 
     const clientData = {
       id: inputId,
@@ -1172,15 +906,10 @@
       updatedAt: Date.now()
     };
 
-    try {
-      await _db.ref(`users/${_user.uid}/isp_clients/${clientData.id}`).update(clientData);
-      document.getElementById('clientForm').reset();
-      document.getElementById('customPackageDiv').style.display = 'none';
-    } catch (err) {
-      alert("ত্রুটি: " + err.message);
-    } finally {
-      toggleLoader(false);
-    }
+    // নতুন এন্ট্রি সরাসরি কমন জায়গায় বা নির্দিষ্ট ইউজারের ফোল্ডারে সেভ করার ব্যবস্থা
+    await _db.ref(`users/${_user.uid}/isp_clients/${clientData.id}`).update(clientData);
+    document.getElementById('clientForm').reset();
+    toggleLoader(false);
   });
 
   setInterval(fetchMikrotikLiveStatus, 15000);
