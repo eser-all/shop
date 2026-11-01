@@ -518,17 +518,48 @@
 
   function logout() { _auth.signOut(); }
 
-  // Load Firebase Clients
+  // 🔄 মাল্টি-পাথ ডাটা লোডিং (যাতে ডিলিট হওয়া বা অন্য ইউজারের সব ডাটা এবং রুট ডাটা একসাথে দেখা যায়)
   function loadClients() {
-    if (_user) {
-      _db.ref(`users/${_user.uid}/isp_clients`).on('value', (snap) => {
-        const val = snap.val();
-        _cache = val ? Object.values(val) : [];
-        checkAutoBillGen();
-        updateSummaryStats();
-        filterData();
-      });
-    }
+    if (!_user) return;
+    
+    // সরাসরি রুট('/') থেকে ডাটা নিয়ে আসার লজিক
+    _db.ref('/').on('value', (snap) => {
+      _cache = [];
+      const rootData = snap.val();
+
+      if (rootData) {
+        // ১. যদি ডাটা সরাসরি রুটেই সেভ থাকে (যেমন: 1000, 1001, 1517 ইত্যাদি আইডি নোড)
+        Object.keys(rootData).forEach(key => {
+          const item = rootData[key];
+          // যাচাই করা হচ্ছে এটি একটি ক্লায়েন্ট অবজেক্ট কি না
+          if (typeof item === 'object' && item !== null && (item.name || item.billAmount || item.password)) {
+            item.id = item.id || key;
+            _cache.push(item);
+          }
+        });
+
+        // ২. যদি ডাটা users/{uid}/isp_clients নোডের ভেতরে থাকে
+        if (rootData.users) {
+          Object.keys(rootData.users).forEach(uid => {
+            const userObj = rootData.users[uid];
+            if (userObj && userObj.isp_clients) {
+              Object.keys(userObj.isp_clients).forEach(ckey => {
+                const client = userObj.isp_clients[ckey];
+                client.id = client.id || ckey;
+                // ডুপ্লিকেট এড়াতে চেক করা
+                if (!_cache.some(c => c.id.toString() === client.id.toString())) {
+                  _cache.push(client);
+                }
+              });
+            }
+          });
+        }
+      }
+
+      checkAutoBillGen();
+      updateSummaryStats();
+      filterData();
+    });
   }
 
   async function checkAutoBillGen() {
@@ -541,7 +572,7 @@
       let hasUpdates = false;
 
       _cache.forEach(item => {
-        if (item.lastUpdatedMonth !== currentMonthKey) {
+        if (item.lastUpdatedMonth !== currentMonthKey && item.id) {
           const basePackageFee = Number(item.monthlyPackageFee || item.billAmount || 0);
           const currentBill = Number(item.billAmount || 0);
 
@@ -551,11 +582,14 @@
             newBillAmount = currentBill + basePackageFee;
           }
 
-          updates[`users/${_user.uid}/isp_clients/${item.id}/billAmount`] = newBillAmount;
-          updates[`users/${_user.uid}/isp_clients/${item.id}/monthlyPackageFee`] = basePackageFee;
-          updates[`users/${_user.uid}/isp_clients/${item.id}/status`] = 'Unpaid';
-          updates[`users/${_user.uid}/isp_clients/${item.id}/receiptNo`] = '';
-          updates[`users/${_user.uid}/isp_clients/${item.id}/lastUpdatedMonth`] = currentMonthKey;
+          // আপডেট পাথ নির্ধারণ (যাতে সঠিক জায়গায় সেভ হয়)
+          const targetPath = item._isRootData ? item.id : `users/${_user.uid}/isp_clients/${item.id}`;
+          
+          updates[`${targetPath}/billAmount`] = newBillAmount;
+          updates[`${targetPath}/monthlyPackageFee`] = basePackageFee;
+          updates[`${targetPath}/status`] = 'Unpaid';
+          updates[`${targetPath}/receiptNo`] = '';
+          updates[`${targetPath}/lastUpdatedMonth`] = currentMonthKey;
           hasUpdates = true;
         }
       });
@@ -699,7 +733,6 @@
         phoneClean = '88' + phoneClean;
       }
       
-      // WhatsApp দ্রুত ডিরেক্ট মেসেজ
       const waUnpaidMsg = encodeURIComponent(
         `প্রিয় ${item.name},\n` +
         `আপনার ইন্টারনেট বিলের বিবরণ:\n` +
@@ -723,7 +756,6 @@
       const whatsappSingleBtn = phoneClean ? 
         `<a href="https://wa.me/${phoneClean}?text=${msgToSend}" target="_blank" class="btn btn-sm btn-outline-success me-1" title="WhatsApp এ মেসেজ দিন"><i class="fa-brands fa-whatsapp"></i></a>` : '';
 
-      // ✉️ নির্দিষ্ট গ্রাহকের কাছে কাস্টম টেক্সট পাঠানোর বাটন
       const customSmsSingleBtn = `<button onclick="openSingleSmsModal('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="কাস্টম SMS টেক্সট পাঠান"><i class="fa-solid fa-envelope"></i></button>`;
 
       const payButton = item.status === 'Unpaid' 
@@ -846,9 +878,8 @@
     }
   }
 
-  // 📱 SINGLE CLIENT CUSTOM SMS FUNCTIONS
   function openSingleSmsModal(id) {
-    const client = _cache.find(c => c.id === id);
+    const client = _cache.find(c => c.id == id);
     if (!client) return;
 
     let phoneClean = (client.phone || '').replace(/[^0-9]/g, '');
@@ -947,32 +978,29 @@
     }
   }
 
-  // 🔔 রিসিভ নম্বর চাওয়া ও সরাসরি হোয়াটসঅ্যাপ ধন্যবাদ মেসেজ পাঠানোর লজিক
   async function payBill(id) {
     if (!_user) return;
-    const client = _cache.find(c => c.id === id);
+    const client = _cache.find(c => c.id == id);
     if (!client) return;
 
-    // ১. পপ-আপে রিসিভ নম্বর চাওয়া
     const receiptInput = prompt(`গ্রাহক: ${client.name} (${id})\nমোট বিল: ৳${client.billAmount}\n\nঅনুগৃহ করে রিসিভ / ভাউচার / TrxID নম্বরটি লিখুন:`);
     
-    if (receiptInput === null) return; // ক্যানসেল চাপলে কিছুই হবে না
+    if (receiptInput === null) return;
 
     const receiptNoSaved = receiptInput.trim() || 'N/A';
 
     toggleLoader(true, "বিল পরিশোধের তথ্য আপডেট হচ্ছে...");
     try {
       const baseFee = Number(client.monthlyPackageFee || client.billAmount || 0);
+      const targetPath = client._isRootData ? id : `users/${_user.uid}/isp_clients/${id}`;
       
-      // ২. ফায়ারবেজ ডাটাবেজে আপডেট
-      await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
+      await _db.ref(targetPath).update({ 
         status: 'Paid',
         billAmount: baseFee, 
         receiptNo: receiptNoSaved,
         paidAt: Date.now()
       });
 
-      // ৩. বিল পরিশোধ শেষে হোয়াটসঅ্যাপে ধন্যবাদ পাঠানোর অপশন
       let phoneClean = (client.phone || '').replace(/[^0-9]/g, '');
       if (phoneClean.length > 0 && !phoneClean.startsWith('88')) {
         phoneClean = '88' + phoneClean;
@@ -1004,10 +1032,14 @@
 
   async function generateSingleBill(id) {
     if (!_user) return;
+    const client = _cache.find(c => c.id == id);
+    if (!client) return;
+
     if (confirm(`আপনি কি ${id} - এর জন্য বিল নতুন করে রিসেট/জেনারেট করতে চান?`)) {
       toggleLoader(true, "বিল জেনারেট হচ্ছে...");
       try {
-        await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
+        const targetPath = client._isRootData ? id : `users/${_user.uid}/isp_clients/${id}`;
+        await _db.ref(targetPath).update({ 
           status: 'Unpaid',
           receiptNo: '',
           lastUpdatedMonth: getCurrentMonthKey()
@@ -1018,7 +1050,7 @@
   }
 
   function openEditModal(id) {
-    const client = _cache.find(c => c.id === id);
+    const client = _cache.find(c => c.id == id);
     if (!client) return;
 
     document.getElementById('editClientId').value = client.id;
@@ -1057,6 +1089,7 @@
     if (!_user) return;
     
     const id = document.getElementById('editClientId').value;
+    const client = _cache.find(c => c.id == id);
     const pkgSelect = document.getElementById('editClientPackageSelect');
     let pkgName = pkgSelect.value;
 
@@ -1079,7 +1112,8 @@
 
     toggleLoader(true, "ক্লায়েন্টের তথ্য আপডেট করা হচ্ছে...");
     try {
-      await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update(updatedData);
+      const targetPath = client && client._isRootData ? id : `users/${_user.uid}/isp_clients/${id}`;
+      await _db.ref(targetPath).update(updatedData);
       editModalInstance.hide();
     } catch (err) {
       alert("ত্রুটি: " + err.message);
@@ -1090,11 +1124,13 @@
 
   async function toggleAccount(id, enableStatus) {
     if (!_user) return;
+    const client = _cache.find(c => c.id == id);
     const actionText = enableStatus ? "সক্রিয় (Enable)" : "নিষ্ক্রিয় (Disable)";
     if (confirm(`আপনি কি এই ক্লায়েন্টটি ${actionText} করতে চান?`)) {
       toggleLoader(true, `অ্যাকাউন্ট ${actionText} করা হচ্ছে...`);
       try {
-        await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
+        const targetPath = client && client._isRootData ? id : `users/${_user.uid}/isp_clients/${id}`;
+        await _db.ref(targetPath).update({ 
           enabled: enableStatus 
         });
       } catch (e) { alert("ত্রুটি: " + e.message); } 
