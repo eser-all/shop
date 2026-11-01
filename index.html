@@ -49,6 +49,10 @@
       70% { box-shadow: 0 0 0 6px rgba(25, 135, 84, 0); }
       100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
     }
+    .tag-badge {
+      cursor: pointer;
+      user-select: none;
+    }
   </style>
 </head>
 <body>
@@ -199,6 +203,11 @@
               </div>
 
               <div class="d-flex gap-2 flex-wrap">
+                <!-- ✉️ SMS / WHATSAPP BULK CUSTOM MODAL TRIGGER BUTTON -->
+                <button onclick="openCustomSmsModal()" class="btn btn-warning btn-sm fw-bold shadow-sm">
+                  <i class="fa-solid fa-envelope me-1"></i> SMS Text Box
+                </button>
+
                 <div class="dropdown">
                   <button class="btn btn-outline-dark btn-sm fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-file-excel me-1 text-success"></i> শিট ডাউনলোড
@@ -306,6 +315,76 @@
   </div>
 </div>
 
+<!-- 📩 Custom SMS & Bulk WhatsApp Modal -->
+<div class="modal fade" id="customSmsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-comment-sms me-2"></i>কাস্টম SMS / WhatsApp মেসেজ বক্স</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">কাদের কাছে মেসেজ পাঠাতে চান?</label>
+          <select id="smsRecipientGroup" class="form-select">
+            <option value="Unpaid">শুধুমাত্র Unpaid গ্রাহকগণ</option>
+            <option value="Paid">শুধুমাত্র Paid গ্রাহকগণ</option>
+            <option value="All">সকল গ্রাহক একসাথে</option>
+          </select>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label fw-semibold">মেসেজ লিখুন (ডাইনামিক ট্যাগ নির্বাচন করতে ক্লিক করুন):</label>
+          <div class="d-flex flex-wrap gap-1 mb-2">
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{name}')">{name} (গ্রাহকের নাম)</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{id}')">{id} (আইডি)</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{bill}')">{bill} (টাকার পরিমাণ)</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{package}')">{package} (প্যাকেজ)</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{month}')">{month} (চলতি মাস)</span>
+          </div>
+          <textarea id="customSmsText" class="form-control" rows="5" placeholder="প্রিয় {name}, আপনার {month} মাসের বিল ৳{bill} টাকা বকেয়া রয়েছে। অনুগ্রহ করে পরিশোধ করুন।"></textarea>
+        </div>
+        <p class="text-muted small mb-0"><i class="fa-solid fa-info-circle me-1"></i>মেসেজ পাঠানোর পর WhatsApp এর মাধ্যমে নির্বাচিত গ্রুপে নোটিশ চলে যাবে।</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">বন্ধ করুন</button>
+        <button type="button" onclick="sendCustomSmsBulk()" class="btn btn-success fw-bold">
+          <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp-এ সব মেসেজ পাঠান
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 📱 Single Client Custom SMS Modal -->
+<div class="modal fade" id="singleSmsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="fa-brands fa-whatsapp text-success me-2"></i>কাস্টম WhatsApp মেসেজ</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="singleSmsPhone">
+        <div class="mb-2">
+          <label class="form-label fw-semibold small">প্রাপক:</label>
+          <input type="text" id="singleSmsClientInfo" class="form-control form-control-sm bg-light" readonly>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">মেসেজ কাস্টমাইজ করুন:</label>
+          <textarea id="singleSmsText" class="form-control" rows="5"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal">বাতিল</button>
+        <button type="button" onclick="executeSingleSms()" class="btn btn-success btn-sm fw-bold">
+          <i class="fa-solid fa-paper-plane me-1"></i> মেসেজ পাঠান
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <footer class="app-footer">
   <div class="container">
     <p class="mb-0 fw-semibold">ISP Billing & MikroTik Live Management System | <span class="text-warning">Developed by Antu</span></p>
@@ -341,11 +420,15 @@
   let _cache = [];
   let _mikrotikStatusMap = {};
   let editModalInstance = null;
+  let customSmsModalInstance = null;
+  let singleSmsModalInstance = null;
   let displayLimit = 10;
   let filterTimeout = null;
 
   document.addEventListener('DOMContentLoaded', () => {
     editModalInstance = new bootstrap.Modal(document.getElementById('editClientModal'));
+    customSmsModalInstance = new bootstrap.Modal(document.getElementById('customSmsModal'));
+    singleSmsModalInstance = new bootstrap.Modal(document.getElementById('singleSmsModal'));
   });
 
   const toggleLoader = (val, text = "ডাটা প্রসেস হচ্ছে...") => {
@@ -616,7 +699,7 @@
         phoneClean = '88' + phoneClean;
       }
       
-      // WhatsApp মেসেজ কাস্টমাইজেশন (Unpaid অবস্থায় বিল পরিশোধ নোটিশ)
+      // WhatsApp দ্রুত ডিরেক্ট মেসেজ
       const waUnpaidMsg = encodeURIComponent(
         `প্রিয় ${item.name},\n` +
         `আপনার ইন্টারনেট বিলের বিবরণ:\n` +
@@ -626,7 +709,6 @@
         `অনুগৃহ করে দ্রুত বিল পরিশোধ নিশ্চিত করুন। ধন্যবাদ!`
       );
 
-      // WhatsApp মেসেজ (Paid অবস্থায় রিসিভ সহ ধন্যবাদ নোটিশ)
       const waPaidMsg = encodeURIComponent(
         `প্রিয় ${item.name},\n` +
         `আপনার ইন্টারনেট বিল পরিশোধ সম্পন্ন হয়েছে।\n\n` +
@@ -640,6 +722,9 @@
 
       const whatsappSingleBtn = phoneClean ? 
         `<a href="https://wa.me/${phoneClean}?text=${msgToSend}" target="_blank" class="btn btn-sm btn-outline-success me-1" title="WhatsApp এ মেসেজ দিন"><i class="fa-brands fa-whatsapp"></i></a>` : '';
+
+      // ✉️ নির্দিষ্ট গ্রাহকের কাছে কাস্টম টেক্সট পাঠানোর বাটন
+      const customSmsSingleBtn = `<button onclick="openSingleSmsModal('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="কাস্টম SMS টেক্সট পাঠান"><i class="fa-solid fa-envelope"></i></button>`;
 
       const payButton = item.status === 'Unpaid' 
         ? `<button onclick="payBill('${item.id}')" class="btn btn-sm btn-success me-1" title="বিল পরিশোধ করুন"><i class="fa-solid fa-money-bill-wave me-1"></i>Pay</button>`
@@ -677,6 +762,7 @@
           <td class="text-center">
             <div class="d-flex justify-content-center align-items-center">
               ${whatsappSingleBtn}
+              ${customSmsSingleBtn}
               ${payButton}
               ${singleBillGenBtn}
               ${editBtn}
@@ -687,6 +773,109 @@
       `;
     }
     tbody.innerHTML = rowsHtml;
+  }
+
+  // ✉️ CUSTOM SMS / WHATSAPP MODAL FUNCTIONS
+  function openCustomSmsModal() {
+    document.getElementById('customSmsText').value = `প্রিয় {name},\nআপনার {month} মাসের ইন্টারনেট বিল ৳{bill} টাকা। বকেয়া বিলটি দ্রুত পরিশোধ করার জন্য অনুরোধ করা হচ্ছে।\nধন্যবাদ!`;
+    customSmsModalInstance.show();
+  }
+
+  function insertSmsTag(tag) {
+    const textarea = document.getElementById('customSmsText');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    textarea.value = text.substring(0, start) + tag + text.substring(end);
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = start + tag.length;
+  }
+
+  async function sendCustomSmsBulk() {
+    const group = document.getElementById('smsRecipientGroup').value;
+    const templateText = document.getElementById('customSmsText').value.trim();
+
+    if (!templateText) {
+      return alert("অনুগ্রহ করে কিছু মেসেজ লিখুন!");
+    }
+
+    let targetClients = _cache;
+    if (group === 'Unpaid') targetClients = _cache.filter(c => c.status === 'Unpaid');
+    else if (group === 'Paid') targetClients = _cache.filter(c => c.status === 'Paid');
+
+    if (targetClients.length === 0) {
+      return alert("নির্বাচিত গ্রুপে কোনো গ্রাহক পাওয়া যায়নি!");
+    }
+
+    if (confirm(`${targetClients.length} জন গ্রাহককে কাস্টম মেসেজ পাঠাতে চান?`)) {
+      const preparedList = targetClients.map(item => {
+        let msg = templateText
+          .replace(/{name}/g, item.name || '')
+          .replace(/{id}/g, item.id || '')
+          .replace(/{bill}/g, item.billAmount || '0')
+          .replace(/{package}/g, item.package || '')
+          .replace(/{month}/g, getCurrentMonthKey());
+
+        return {
+          id: item.id,
+          name: item.name,
+          phone: item.phone,
+          customMessage: msg
+        };
+      });
+
+      toggleLoader(true, "WhatsApp-এ সবার কাছে কাস্টম মেসেজ পাঠানো হচ্ছে...");
+      try {
+        const res = await fetch(WHATSAPP_BULK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clients: preparedList, isCustomText: true })
+        });
+        const result = await res.json();
+        if (result.success) {
+          alert(`মেসেজ সফলভাবে প্রসেস করা হয়েছে!`);
+          customSmsModalInstance.hide();
+        } else {
+          alert("ত্রুটি: " + result.message);
+        }
+      } catch (err) {
+        alert("WhatsApp সার্ভারে সংযোগ করা সম্ভব হয়নি! আপনার Node.js সার্ভার চালু আছে কিনা তা নিশ্চিত করুন।");
+      } finally {
+        toggleLoader(false);
+      }
+    }
+  }
+
+  // 📱 SINGLE CLIENT CUSTOM SMS FUNCTIONS
+  function openSingleSmsModal(id) {
+    const client = _cache.find(c => c.id === id);
+    if (!client) return;
+
+    let phoneClean = (client.phone || '').replace(/[^0-9]/g, '');
+    if (phoneClean.length > 0 && !phoneClean.startsWith('88')) {
+      phoneClean = '88' + phoneClean;
+    }
+
+    if (!phoneClean) {
+      return alert("গ্রাহকের কোনো সঠিক মোবাইল নম্বর পাওয়া যায়নি!");
+    }
+
+    document.getElementById('singleSmsPhone').value = phoneClean;
+    document.getElementById('singleSmsClientInfo').value = `${client.name} (${client.id}) - ${client.phone}`;
+    document.getElementById('singleSmsText').value = `প্রিয় ${client.name},\nআপনার প্যাকেজ: ${client.package}\nবিল: ৳${client.billAmount}\nস্ট্যাটাস: ${client.status}\n\nধন্যবাদ!`;
+    
+    singleSmsModalInstance.show();
+  }
+
+  function executeSingleSms() {
+    const phone = document.getElementById('singleSmsPhone').value;
+    const text = document.getElementById('singleSmsText').value.trim();
+
+    if (!text) return alert("মেসেজ খালি রাখা যাবে না!");
+
+    const encodedText = encodeURIComponent(text);
+    window.open(`https://wa.me/${phone}?text=${encodedText}`, '_blank');
+    singleSmsModalInstance.hide();
   }
 
   function downloadCSV(type) {
