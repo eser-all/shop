@@ -518,11 +518,11 @@
 
   function logout() { _auth.signOut(); }
 
-  // 🔄 মাল্টি-পাথ ডাটা লোডিং (যাতে ডিলিট হওয়া বা অন্য ইউজারের সব ডাটা এবং রুট ডাটা একসাথে দেখা যায়)
+  // 🔄 মাল্টি-পাথ ডাটা লোডিং (রুট এবং ইউজার ফোল্ডার উভয় স্থান থেকে সব ইউজারের ডাটা একসাথে লোড করার লজিক)
   function loadClients() {
     if (!_user) return;
     
-    // সরাসরি রুট('/') থেকে ডাটা নিয়ে আসার লজিক
+    // সরাসরি রুট('/') থেকে সমস্ত ডাটা একসাথে ফেচ করা হচ্ছে
     _db.ref('/').on('value', (snap) => {
       _cache = [];
       const rootData = snap.val();
@@ -531,24 +531,27 @@
         // ১. যদি ডাটা সরাসরি রুটেই সেভ থাকে (যেমন: 1000, 1001, 1517 ইত্যাদি আইডি নোড)
         Object.keys(rootData).forEach(key => {
           const item = rootData[key];
-          // যাচাই করা হচ্ছে এটি একটি ক্লায়েন্ট অবজেক্ট কি না
           if (typeof item === 'object' && item !== null && (item.name || item.billAmount || item.password)) {
             item.id = item.id || key;
+            item._isRootData = true; // ফ্ল্যাগ সেট করা হলো যাতে পরবর্তীতে আপডেট পাথ সঠিক থাকে
             _cache.push(item);
           }
         });
 
-        // ২. যদি ডাটা users/{uid}/isp_clients নোডের ভেতরে থাকে
+        // ২. যদি ডাটা যেকোনো ইউজারের users/{uid}/isp_clients নোডের ভেতরে থাকে
         if (rootData.users) {
           Object.keys(rootData.users).forEach(uid => {
             const userObj = rootData.users[uid];
             if (userObj && userObj.isp_clients) {
               Object.keys(userObj.isp_clients).forEach(ckey => {
                 const client = userObj.isp_clients[ckey];
-                client.id = client.id || ckey;
-                // ডুপ্লিকেট এড়াতে চেক করা
-                if (!_cache.some(c => c.id.toString() === client.id.toString())) {
-                  _cache.push(client);
+                if (client && typeof client === 'object') {
+                  client.id = client.id || ckey;
+                  client._uidPath = uid; // কোন ইউজারের আন্ডারে আছে তা সংরক্ষণ
+                  // ডুপ্লিকেট এড়াতে আইডি চেক করে পুশ করা
+                  if (!_cache.some(c => c.id.toString() === client.id.toString())) {
+                    _cache.push(client);
+                  }
                 }
               });
             }
@@ -582,8 +585,8 @@
             newBillAmount = currentBill + basePackageFee;
           }
 
-          // আপডেট পাথ নির্ধারণ (যাতে সঠিক জায়গায় সেভ হয়)
-          const targetPath = item._isRootData ? item.id : `users/${_user.uid}/isp_clients/${item.id}`;
+          // সঠিক পাথে আপডেট নির্ধারণ
+          const targetPath = item._isRootData ? item.id : `users/${item._uidPath || _user.uid}/isp_clients/${item.id}`;
           
           updates[`${targetPath}/billAmount`] = newBillAmount;
           updates[`${targetPath}/monthlyPackageFee`] = basePackageFee;
@@ -992,7 +995,7 @@
     toggleLoader(true, "বিল পরিশোধের তথ্য আপডেট হচ্ছে...");
     try {
       const baseFee = Number(client.monthlyPackageFee || client.billAmount || 0);
-      const targetPath = client._isRootData ? id : `users/${_user.uid}/isp_clients/${id}`;
+      const targetPath = client._isRootData ? id : `users/${client._uidPath || _user.uid}/isp_clients/${id}`;
       
       await _db.ref(targetPath).update({ 
         status: 'Paid',
@@ -1038,7 +1041,7 @@
     if (confirm(`আপনি কি ${id} - এর জন্য বিল নতুন করে রিসেট/জেনারেট করতে চান?`)) {
       toggleLoader(true, "বিল জেনারেট হচ্ছে...");
       try {
-        const targetPath = client._isRootData ? id : `users/${_user.uid}/isp_clients/${id}`;
+        const targetPath = client._isRootData ? id : `users/${client._uidPath || _user.uid}/isp_clients/${id}`;
         await _db.ref(targetPath).update({ 
           status: 'Unpaid',
           receiptNo: '',
@@ -1112,7 +1115,7 @@
 
     toggleLoader(true, "ক্লায়েন্টের তথ্য আপডেট করা হচ্ছে...");
     try {
-      const targetPath = client && client._isRootData ? id : `users/${_user.uid}/isp_clients/${id}`;
+      const targetPath = client && client._isRootData ? id : `users/${client && client._uidPath ? client._uidPath : _user.uid}/isp_clients/${id}`;
       await _db.ref(targetPath).update(updatedData);
       editModalInstance.hide();
     } catch (err) {
@@ -1129,7 +1132,7 @@
     if (confirm(`আপনি কি এই ক্লায়েন্টটি ${actionText} করতে চান?`)) {
       toggleLoader(true, `অ্যাকাউন্ট ${actionText} করা হচ্ছে...`);
       try {
-        const targetPath = client && client._isRootData ? id : `users/${_user.uid}/isp_clients/${id}`;
+        const targetPath = client && client._isRootData ? id : `users/${client && client._uidPath ? client._uidPath : _user.uid}/isp_clients/${id}`;
         await _db.ref(targetPath).update({ 
           enabled: enableStatus 
         });
