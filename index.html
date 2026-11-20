@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>স্মার্ট ISP বিলিং ও এক্সেল আপলোড ম্যানেজমেন্ট</title>
+  <title>ISP বিলিং ও MikroTik লাইভ মনিটরিং সিস্টেম</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
-  <!-- SheetJS Library for Excel & CSV Parsing -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
     :root {
@@ -25,16 +23,94 @@
     .content-wrapper { flex: 1; }
     .header-banner { background: var(--primary-gradient); color: white; padding: 20px 0; border-radius: 0 0 20px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
     .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .stat-card { border-left: 5px solid; }
+    .stat-card { border-left: 5px solid; cursor: pointer; transition: transform 0.2s; }
+    .stat-card:hover { transform: translateY(-3px); }
     .stat-total { border-color: #0d6efd; }
     .stat-paid { border-color: #198754; }
     .stat-unpaid { border-color: #dc3545; }
+    .stat-online { border-color: #0dcaf0; }
     .table-container { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .auth-container { max-width: 400px; margin: 60px auto; border-top: 5px solid #0d6efd; }
     .loading-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; color: white; }
-    .app-footer { background: var(--primary-gradient); color: white; text-align: center; padding: 12px 0; font-size: 0.9rem; margin-top: auto; }
-    .upload-box { border: 2px dashed #0d6efd; border-radius: 10px; padding: 15px; text-align: center; background: #eef5ff; cursor: pointer; transition: 0.3s; }
-    .upload-box:hover { background: #dbeaff; }
+    .app-footer { background: var(--primary-gradient); color: white; text-align: center; padding: 14px 0; font-size: 0.95rem; margin-top: auto; }
+    .status-badge { font-size: 0.8rem; padding: 4px 10px; border-radius: 15px; }
+    .pulse-online {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #198754;
+      box-shadow: 0 0 0 rgba(25, 135, 84, 0.4);
+      animation: pulse 1.5s infinite;
+      margin-right: 4px;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); }
+      70% { box-shadow: 0 0 0 6px rgba(25, 135, 84, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+    }
+    .tag-badge { cursor: pointer; user-select: none; }
+
+    /* 10 ISP Modules Grid Styling */
+    .module-card {
+      background: #ffffff;
+      border: 1px solid #e9ecef;
+      border-radius: 14px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.22s ease;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.04);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .module-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 22px rgba(15, 32, 39, 0.12);
+      border-color: #0d6efd;
+    }
+    .module-preview {
+      height: 68px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+      border: 1px dashed #cbd5e1;
+      padding: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+    .preview-bar {
+      height: 7px;
+      border-radius: 4px;
+      background: #cbd5e1;
+    }
+    .module-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .module-title {
+      font-weight: 700;
+      font-size: 1rem;
+      color: #1e293b;
+      margin-bottom: 3px;
+    }
+    .module-desc {
+      font-size: 0.78rem;
+      color: #64748b;
+      line-height: 1.35;
+      margin-bottom: 0;
+    }
   </style>
 </head>
 <body>
@@ -51,7 +127,7 @@
       <div class="text-center mb-4">
         <i class="fa-solid fa-network-wired fa-3x text-primary mb-2"></i>
         <h4 class="fw-bold">ISP এডমিন লগইন</h4>
-        <p class="text-muted small">বিলিং প্যানেলে প্রবেশ করতে তথ্য দিন</p>
+        <p class="text-muted small">বিলিং ও মাইক্রোটিক প্যানেলে প্রবেশ করুন</p>
       </div>
       <form id="authForm">
         <div class="mb-3">
@@ -73,7 +149,7 @@
     <div class="header-banner mb-4">
       <div class="container-fluid px-md-4 d-flex justify-content-between align-items-center">
         <div>
-          <h3 class="fw-bold mb-0"><i class="fa-solid fa-wifi me-2"></i>ISP বিলিং ও ক্লায়েন্ট ডাটাবেজ</h3>
+          <h3 class="fw-bold mb-0"><i class="fa-solid fa-wifi me-2"></i>ISP বিলিং ও মাইক্রোটিক মনিটরিং</h3>
           <p class="mb-0 opacity-75 small" id="currentMonthLabel">চলতি মাসের বিলিং রেকর্ডস</p>
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -88,98 +164,369 @@
     <div class="container-fluid px-md-4">
       <!-- Summary Cards -->
       <div class="row g-3 mb-4 text-center">
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-lg-3" onclick="showAllClients()">
           <div class="card card-custom p-3 bg-white stat-card stat-total">
             <div class="text-muted small fw-bold">মোট গ্রাহক</div>
             <h4 class="text-primary fw-bold mt-2 mb-0" id="statTotalClients">0</h4>
           </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-lg-3" onclick="filterByStatus('Paid')">
           <div class="card card-custom p-3 bg-white stat-card stat-paid">
-            <div class="text-muted small fw-bold">মোট আদায় (Total Paid)</div>
+            <div class="text-muted small fw-bold">মোট আদায় (Paid)</div>
             <h4 class="text-success fw-bold mt-2 mb-0" id="statTotalPaid">৳ 0.00</h4>
           </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-lg-3" onclick="filterByStatus('Unpaid')">
           <div class="card card-custom p-3 bg-white stat-card stat-unpaid">
-            <div class="text-muted small fw-bold">বকেয়া বিল (Total Unpaid)</div>
+            <div class="text-muted small fw-bold">বকেয়া বিল (Unpaid)</div>
             <h4 class="text-danger fw-bold mt-2 mb-0" id="statTotalUnpaid">৳ 0.00</h4>
           </div>
         </div>
         <div class="col-6 col-lg-3">
-          <div class="card card-custom p-3 bg-white stat-card stat-total">
-            <div class="text-muted small fw-bold">সম্ভাব্য বিল</div>
-            <h4 class="text-dark fw-bold mt-2 mb-0" id="statExpectedBill">৳ 0.00</h4>
+          <div class="card card-custom p-3 bg-white stat-card stat-online">
+            <div class="text-muted small fw-bold">মাইক্রোটিক অনলাইন</div>
+            <h4 class="text-info fw-bold mt-2 mb-0" id="statOnlineCount">0 / 0</h4>
+          </div>
+        </div>
+      </div>
+
+      <!-- 10 ISP Core Modules Section (From Image) -->
+      <div class="card card-custom p-3 mb-4 bg-white">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+          <div>
+            <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-layer-group me-2 text-primary"></i>ISP অপারেশন ও মনিটরিং মডিউলসমূহ (১–১০)</h5>
+            <small class="text-muted">যেকোনো মডিউলে ক্লিক করলে পপআপ উইন্ডো খুলবে (ভেতর থেকে নতুন উইন্ডোতেও ওপেন করা যাবে)</small>
+          </div>
+          <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2">১০টি লাইভ মডিউল</span>
+        </div>
+
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-3" id="modulesGrid">
+          <!-- 1. MAC -->
+          <div class="col">
+            <div class="module-card" onclick="openFeaturePopup('mac')">
+              <div>
+                <div class="module-preview">
+                  <div class="d-flex gap-1">
+                    <span class="preview-bar w-50 bg-primary bg-opacity-50"></span>
+                    <span class="preview-bar w-25 bg-success bg-opacity-50"></span>
+                  </div>
+                  <div class="d-flex gap-1">
+                    <span class="preview-bar w-75"></span>
+                    <span class="preview-bar w-25 bg-warning bg-opacity-50"></span>
+                  </div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <span class="module-num bg-primary">1</span>
+                  <div>
+                    <div class="module-title">MAC</div>
+                    <p class="module-desc">Users online, offline and expiring, wallet, OLT alarms</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Financial -->
+          <div class="col">
+            <div class="module-card" onclick="openFeaturePopup('financial')">
+              <div>
+                <div class="module-preview">
+                  <div class="d-flex gap-1">
+                    <span class="preview-bar w-25 bg-success bg-opacity-50"></span>
+                    <span class="preview-bar w-25 bg-danger bg-opacity-50"></span>
+                    <span class="preview-bar w-50"></span>
+                  </div>
+                  <div class="preview-bar w-100"></div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <span class="module-num bg-info">2</span>
+                  <div>
+                    <div class="module-title">Financial</div>
+                    <p class="module-desc">MRC, received, dues and hold, this month vs last</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Radius Accounts -->
+          <div class="col">
+            <div class="module-card" onclick="openFeaturePopup('radius')">
+              <div>
+                <div class="module-preview">
+                  <div class="preview-bar w-75 bg-primary bg-opacity-50"></div>
+                  <div class="d-flex gap-1">
+                    <span class="preview-bar w-50"></span>
+                    <span class="preview-bar w-50 bg-success bg-opacity-50"></span>
+                  </div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <span class="module-num bg-success">3</span>
+                  <div>
+                    <div class="module-title">Radius Accounts</div>
+                    <p class="module-desc">Billed, received and collection % by Manager and POP</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Corporate -->
+          <div class="col">
+            <div class="module-card" onclick="openFeaturePopup('corporate')">
+              <div>
+                <div class="module-preview">
+                  <div class="d-flex gap-1">
+                    <span class="preview-bar w-50" style="background:#0d9488; opacity:0.65;"></span>
+                    <span class="preview-bar w-50"></span>
+                  </div>
+                  <div class="preview-bar w-100"></div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <span class="module-num" style="background:#0d9488;">4</span>
+                  <div>
+                    <div class="module-title">Corporate</div>
+                    <p class="module-desc">Corporate MRC, bills and collection with a 12-month trend</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Support -->
+          <div class="col">
+            <div class="module-card" onclick="openFeaturePopup('support')">
+              <div>
+                <div class="module-preview">
+                  <div class="d-flex gap-1">
+                    <span class="preview-bar w-25 bg-warning"></span>
+                    <span class="preview-bar w-75"></span>
+                  </div>
+                  <div class="preview-bar w-75"></div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <span class="module-num bg-warning text-dark">5</span>
+                  <div>
+                    <div class="module-title">Support</div>
+                    <p class="module-desc">Tokens raised vs solved, ageing, by Manager, POP and area</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. FTTX -->
+          <div class="col">
+            <div class="module-card" onclick="openFeaturePopup('fttx')">
+              <div>
+                <div class="module-preview" style="background: #0f172a; border-color: #1e293b;">
+                  <div class="d-flex gap-1">
+                    <span class="preview-bar w-25 bg-success"></span>
+                    <span class="preview-bar w-25 bg-info"></span>
+                    <span class="preview-bar w-50 bg-secondary"></span>
+                  </div>
+                  <div class="preview-bar w-75 bg-secondary"></div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <span class="module-num bg-danger">6</span>
+                  <div>
+                    <div class="module-title">FTTX</div>
+                    <p class="module-desc">OLTs, PON ports, ONUs online and optical power, live</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7. Billing -->
+          <div class="col">
+            <div class="module-card" onclick="openFeaturePopup('billing')">
+              <div>
+                <div class="module-preview">
+                  <div class="d-flex gap-1">
+                    <span class="preview-bar w-50 bg-primary bg-opacity-50"></span>
+                    <span class="preview-bar w-50"></span>
+                  </div>
+                  <div class="preview-bar w-100"></div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <span class="module-num" style="background:#6f42c1;">7</span>
+                  <div>
+                    <div class="module-title">Billing</div>
+                    <p class="module-desc">A collector's ledger, due customers and today's receipts</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 8. System -->
+          <div class="col">
+            <div class="module-card" onclick="openFeaturePopup('system')">
+              <div>
+                <div class="module-preview">
+                  <div class="d-flex gap-1">
+                    <span class="preview-bar w-50 bg-dark bg-opacity-50"></span>
+                    <span class="preview-bar w-50"></span>
+                  </div>
+                  <div class="preview-bar w-75"></div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <span class="module-num bg-dark">8</span>
+                  <div>
+                    <div class="module-title">System</div>
+                    <p class="module-desc">Server health and who is signed in right now</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 9. NTTN -->
+          <div class="col">
+            <div class="module-card" onclick="openFeaturePopup('nttn')">
+              <div>
+                <div class="module-preview">
+                  <div class="preview-bar w-100 bg-danger bg-opacity-25"></div>
+                  <div class="d-flex gap-1">
+                    <span class="preview-bar w-50 bg-primary bg-opacity-50"></span>
+                    <span class="preview-bar w-50"></span>
+                  </div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <span class="module-num" style="background:#e11d48;">9</span>
+                  <div>
+                    <div class="module-title">NTTN</div>
+                    <p class="module-desc">Capacity vs consumption, idle and over-capacity links</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 10. Performance -->
+          <div class="col">
+            <div class="module-card" onclick="openFeaturePopup('performance')">
+              <div>
+                <div class="module-preview">
+                  <div class="d-flex gap-1">
+                    <span class="preview-bar w-25 bg-success bg-opacity-50"></span>
+                    <span class="preview-bar w-25 bg-primary bg-opacity-50"></span>
+                    <span class="preview-bar w-50"></span>
+                  </div>
+                  <div class="preview-bar w-100"></div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <span class="module-num" style="background:#db2777;">10</span>
+                  <div>
+                    <div class="module-title">Performance</div>
+                    <p class="module-desc">Sales, collection, efficiency and growth by month</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <div class="row">
-        <!-- Input & File Upload Section -->
-        <div class="col-lg-4 mb-4">
-          <!-- Excel/CSV Import Box -->
-          <div class="card card-custom p-4 mb-3">
-            <h5 class="fw-bold text-dark mb-2"><i class="fa-solid fa-file-csv me-2 text-success"></i>Excel / CSV ফাইল আপলোড</h5>
-            <p class="text-muted small mb-3">আপনার গ্রাহকের radcheck list ফাইলে সরাসরি আপলোড করুন।</p>
-            <div class="upload-box" onclick="document.getElementById('excelFileInput').click()">
-              <i class="fa-solid fa-cloud-arrow-up fa-2x text-primary mb-2"></i>
-              <div class="fw-bold small">ফাইল নির্বাচন করতে এখানে ক্লিক করুন</div>
-              <div class="text-muted small" id="fileNameDisplay">.csv বা .xlsx ফাইল সমর্থন করে</div>
-            </div>
-            <input type="file" id="excelFileInput" accept=".csv, .xlsx, .xls" style="display: none;" onchange="handleFileUpload(event)">
-          </div>
-
-          <!-- Single Client Form -->
-          <div class="card card-custom p-4">
-            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-2 text-primary"></i>নতুন ক্লায়েন্ট এন্ট্রি</h5>
+        <!-- Sidebar Controls -->
+        <div class="col-lg-3 mb-4">
+          <div class="card card-custom p-3">
+            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-1 text-primary"></i>নতুন কাস্টমার যুক্ত করুন</h6>
             <form id="clientForm">
               <div class="mb-2">
-                <label class="form-label fw-semibold small">MikroTik Username / ID</label>
-                <input type="text" id="clientId" class="form-control form-control-sm" placeholder="যেমন: 41younus88" required>
+                <label class="form-label fw-semibold small mb-1">Username / ID</label>
+                <input type="text" id="clientId" class="form-control form-control-sm" placeholder="41younus88" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small">গ্রাহকের নাম</label>
-                <input type="text" id="clientName" class="form-control form-control-sm" placeholder="যেমন: Younus" required>
+                <label class="form-label fw-semibold small mb-1">পাসওয়ার্ড (Password)</label>
+                <input type="text" id="clientPassword" class="form-control form-control-sm" placeholder="123456" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small">মোবাইল নম্বর</label>
+                <label class="form-label fw-semibold small mb-1">গ্রাহকের নাম</label>
+                <input type="text" id="clientName" class="form-control form-control-sm" placeholder="Younus" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label fw-semibold small mb-1">মোবাইল নম্বর</label>
                 <input type="text" id="clientPhone" class="form-control form-control-sm" placeholder="01920060010" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small">প্যাকেজ (Package)</label>
-                <input type="text" id="clientPackage" class="form-control form-control-sm" placeholder="যেমন: SAM_630TK_I_Vat" required>
+                <label class="form-label fw-semibold small mb-1">ঠিকানা (Address)</label>
+                <input type="text" id="clientAddress" class="form-control form-control-sm" placeholder="বাসা-১২, রোড-০৫, ঢাকা">
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small">মাসিক বিল (৳)</label>
-                <input type="number" id="billAmount" class="form-control form-control-sm" placeholder="630" min="0" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label fw-semibold small">পেমেন্ট স্ট্যাটাস</label>
-                <select id="paymentStatus" class="form-select form-select-sm" required>
-                  <option value="Paid">Paid (Enabled Line)</option>
-                  <option value="Unpaid">Unpaid (Disabled Line)</option>
+                <label class="form-label fw-semibold small mb-1">প্যাকেজ সিলেক্ট করুন</label>
+                <select id="clientPackageSelect" class="form-select form-select-sm" onchange="onPackageChange('add')">
+                  <option value="SAM_500TK_5Mbps" data-price="500">SAM_500TK_5Mbps (৳500)</option>
+                  <option value="SAM_630TK_I_Vat" data-price="630" selected>SAM_630TK_I_Vat (৳630)</option>
+                  <option value="SAM_800TK_10Mbps" data-price="800">SAM_800TK_10Mbps (৳800)</option>
+                  <option value="SAM_1000TK_15Mbps" data-price="1000">SAM_1000TK_15Mbps (৳1000)</option>
+                  <option value="Custom">Custom / অন্যান্য প্যাকেজ</option>
                 </select>
               </div>
-              <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
-                <i class="fa-solid fa-cloud-arrow-up me-1"></i> ক্লায়েন্ট সেভ করুন
+              <div class="mb-2" id="customPackageDiv" style="display: none;">
+                <label class="form-label fw-semibold small mb-1">কাস্টম প্যাকেজের নাম</label>
+                <input type="text" id="clientPackageCustom" class="form-control form-control-sm" placeholder="Custom Package Name">
+              </div>
+              <div class="mb-2">
+                <label class="form-label fw-semibold small mb-1">মাসিক বিল (৳)</label>
+                <input type="number" id="billAmount" class="form-control form-control-sm" value="630" min="0" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold small mb-1">বিলিং স্ট্যাটাস</label>
+                <select id="paymentStatus" class="form-select form-select-sm" required>
+                  <option value="Paid">Paid</option>
+                  <option value="Unpaid">Unpaid</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold shadow-sm py-2">
+                <i class="fa-solid fa-cloud-arrow-up me-1"></i> সেভ করুন
               </button>
             </form>
           </div>
         </div>
 
-        <!-- Client List Table -->
-        <div class="col-lg-8">
+        <!-- Table Display Area -->
+        <div class="col-lg-9">
           <div class="table-container mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <input type="text" id="searchInput" onkeyup="filterData()" class="form-control form-control-sm shadow-sm" style="width: 240px;" placeholder="🔍 ইউজারনেম, নাম বা ফোন দিয়ে খুঁজুন...">
-              <div class="d-flex gap-2">
-                <button onclick="manualMonthlyRenewal()" class="btn btn-outline-primary btn-sm fw-bold">
-                  <i class="fa-solid fa-rotate me-1"></i> মান্থলি রিনেউ
-                </button>
-                <button onclick="exportExcel()" class="btn btn-outline-success btn-sm fw-bold">
-                  <i class="fa-solid fa-file-excel me-1"></i> Excel ডাউনলোড
+              <div class="d-flex align-items-center gap-2">
+                <input type="text" id="searchInput" oninput="debouncedFilter()" class="form-control form-control-sm shadow-sm" style="width: 250px;" placeholder="🔍 ID / নাম / ফোন / ঠিকানা খুঁজুন...">
+                <button onclick="showAllClients()" class="btn btn-sm btn-outline-secondary fw-bold" title="সব গ্রাহক একসাথে দেখুন">
+                  <i class="fa-solid fa-users me-1"></i> সব কাস্টমার
                 </button>
               </div>
+
+              <div class="d-flex gap-2 flex-wrap">
+                <button onclick="openCustomSmsModal()" class="btn btn-warning btn-sm fw-bold shadow-sm">
+                  <i class="fa-solid fa-envelope me-1"></i> SMS Text Box
+                </button>
+
+                <div class="dropdown">
+                  <button class="btn btn-outline-dark btn-sm fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-solid fa-file-excel me-1 text-success"></i> শিট ডাউনলোড
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item fw-semibold text-success" onclick="downloadCSV('Paid')"><i class="fa-solid fa-circle-check me-2"></i>Paid গ্রাহক ডাউনলোড</a></li>
+                    <li><a class="dropdown-item fw-semibold text-danger" onclick="downloadCSV('Unpaid')"><i class="fa-solid fa-circle-xmark me-2"></i>Unpaid গ্রাহক ডাউনলোড</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item fw-semibold" onclick="downloadCSV('All')"><i class="fa-solid fa-list me-2"></i>সকল গ্রাহক ডাউনলোড</a></li>
+                  </ul>
+                </div>
+
+                <button onclick="sendBulkWhatsApp()" class="btn btn-success btn-sm fw-bold">
+                  <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp Bulk
+                </button>
+                <button onclick="fetchMikrotikLiveStatus()" class="btn btn-outline-info btn-sm fw-bold">
+                  <i class="fa-solid fa-arrows-rotate me-1"></i> Sync
+                </button>
+              </div>
+            </div>
+
+            <div id="filterNotice" class="alert alert-info py-1 px-3 small d-flex justify-content-between align-items-center mb-2" style="display: none;">
+              <span id="filterNoticeText"></span>
+              <button onclick="showDefaultTen()" class="btn btn-sm btn-link p-0 text-decoration-none">ডিফল্ট ১০ জন দেখুন</button>
             </div>
 
             <div class="table-responsive">
@@ -187,10 +534,13 @@
                 <thead class="table-light">
                   <tr>
                     <th>Username / ID</th>
-                    <th>নাম & ফোন</th>
+                    <th>Password</th>
+                    <th>নাম, মোবাইল & ঠিকানা</th>
                     <th>প্যাকেজ</th>
                     <th>বিল</th>
-                    <th>স্ট্যাটাস</th>
+                    <th>বিল স্ট্যাটাস</th>
+                    <th>অ্যাকাউন্ট অবস্থা</th>
+                    <th>লাইভ নেট</th>
                     <th class="text-center">অ্যাকশন</th>
                   </tr>
                 </thead>
@@ -204,25 +554,177 @@
   </div>
 </div>
 
+<!-- Feature Module Popup Modal (For Modules 1 to 10) -->
+<div class="modal fade" id="featureModuleModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header text-white" id="featureModalHeader" style="background: var(--primary-gradient);">
+        <div>
+          <h5 class="modal-title fw-bold mb-0" id="featureModalTitle">মডিউল টাইটেল</h5>
+          <small class="opacity-75" id="featureModalSubtitle">মডিউল সাবটাইটেল</small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" onclick="openCurrentFeatureInNewWindow()" class="btn btn-sm btn-light fw-bold">
+            <i class="fa-solid fa-up-right-from-square me-1"></i> নতুন উইন্ডোতে খুলুন
+          </button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+      </div>
+      <div class="modal-body bg-light" id="featureModalBody">
+        <!-- Dynamic Feature Content Rendered Here -->
+      </div>
+      <div class="modal-footer bg-white justify-content-between">
+        <span class="small text-muted" id="featureModalFooterInfo">লাইভ ডাটা সিঙ্ক সক্রিয়</span>
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">বন্ধ করুন</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Client Modal -->
+<div class="modal fade" id="editClientModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-pen me-2"></i>গ্রাহকের তথ্য এডিট করুন</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editClientForm">
+          <input type="hidden" id="editClientId">
+          <div class="mb-2">
+            <label class="form-label fw-semibold small">Username / ID (পরিবর্তনযোগ্য নয়)</label>
+            <input type="text" id="editClientIdDisplay" class="form-control form-control-sm" readonly disabled>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold small">পাসওয়ার্ড (Password)</label>
+            <input type="text" id="editClientPassword" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold small">গ্রাহকের নাম</label>
+            <input type="text" id="editClientName" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold small">মোবাইল নম্বর</label>
+            <input type="text" id="editClientPhone" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold small">ঠিকানা (Address)</label>
+            <input type="text" id="editClientAddress" class="form-control form-control-sm">
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold small">প্যাকেজ পরিবর্তন করুন</label>
+            <select id="editClientPackageSelect" class="form-select form-select-sm" onchange="onPackageChange('edit')">
+              <option value="SAM_500TK_5Mbps" data-price="500">SAM_500TK_5Mbps (৳500)</option>
+              <option value="SAM_630TK_I_Vat" data-price="630">SAM_630TK_I_Vat (৳630)</option>
+              <option value="SAM_800TK_10Mbps" data-price="800">SAM_800TK_10Mbps (৳800)</option>
+              <option value="SAM_1000TK_15Mbps" data-price="1000">SAM_1000TK_15Mbps (৳1000)</option>
+              <option value="Custom">Custom / অন্যান্য প্যাকেজ</option>
+            </select>
+          </div>
+          <div class="mb-2" id="editCustomPackageDiv" style="display: none;">
+            <label class="form-label fw-semibold small">কাস্টম প্যাকেজ নাম</label>
+            <input type="text" id="editClientPackageCustom" class="form-control form-control-sm">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">মাসিক বিল (৳)</label>
+            <input type="number" id="editBillAmount" class="form-control form-control-sm" min="0" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 fw-bold py-2">আপডেট সেভ করুন</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Custom SMS Modal -->
+<div class="modal fade" id="customSmsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-comment-sms me-2"></i>কাস্টম SMS / WhatsApp মেসেজ বক্স</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">কাদের কাছে মেসেজ পাঠাতে চান?</label>
+          <select id="smsRecipientGroup" class="form-select">
+            <option value="Unpaid">শুধুমাত্র Unpaid গ্রাহকগণ</option>
+            <option value="Paid">শুধুমাত্র Paid গ্রাহকগণ</option>
+            <option value="All">সকল গ্রাহক একসাথে</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold">মেসেজ লিখুন:</label>
+          <div class="d-flex flex-wrap gap-1 mb-2">
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{name}')">{name}</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{id}')">{id}</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{bill}')">{bill}</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{package}')">{package}</span>
+            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{month}')">{month}</span>
+          </div>
+          <textarea id="customSmsText" class="form-control" rows="5"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">বন্ধ করুন</button>
+        <button type="button" onclick="sendCustomSmsBulk()" class="btn btn-success fw-bold">WhatsApp-এ পাঠান</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Single SMS Modal -->
+<div class="modal fade" id="singleSmsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="fa-brands fa-whatsapp text-success me-2"></i>কাস্টম WhatsApp মেসেজ</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="singleSmsPhone">
+        <div class="mb-2">
+          <label class="form-label fw-semibold small">প্রাপক:</label>
+          <input type="text" id="singleSmsClientInfo" class="form-control form-control-sm bg-light" readonly>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">মেসেজ:</label>
+          <textarea id="singleSmsText" class="form-control" rows="5"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal">বাতিল</button>
+        <button type="button" onclick="executeSingleSms()" class="btn btn-success btn-sm fw-bold">মেসেজ পাঠান</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <footer class="app-footer">
   <div class="container">
-    <p class="mb-0 fw-semibold">ISP Billing & Excel Management System</p>
+    <p class="mb-0 fw-semibold">ISP Billing & MikroTik Live Management System | <span class="text-warning">Developed by Antu</span></p>
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-  // Firebase Configuration
-  const _0x99a = ["QUl6YVN5Q2I0ZmtPdGRjODNaUDZmWF9wVlU1cGpXQTBXdmlUTGlJ", "ZXNlci1hbGwtaXNwLmZpcmViYXNlYXBwLmNvbQ==", "aHR0cHM6Ly9lc2VyLWFsbC1pc3AtZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcA==", "ZXNlci1hbGwtaXNw", "ZXNlci1hbGwtaXNwLmZpcmViYXN0b3JhZ2UuYXBw", "MTA5NTMxNDk5NTQ0NA==", "MToxMDk1MzE0OTk1NDQ0OndlYjoxMmFjNDZmYzU4MjMzNTBiZmI4NmEx", "Rz1XQktKTEdNM0hE"];
-  const _0x3b = (idx) => atob(_0x99a[idx]);
+  const MIKROTIK_API_URL = 'http://localhost:5000/api/mikrotik/users-status';
+  const WHATSAPP_BULK_URL = 'http://localhost:5000/api/whatsapp/send-bulk';
 
   const firebaseConfig = {
-    apiKey: _0x3b(0), authDomain: _0x3b(1), databaseURL: _0x3b(2),
-    projectId: _0x3b(3), storageBucket: _0x3b(4), messagingSenderId: _0x3b(5),
-    appId: _0x3b(6), measurementId: _0x3b(7)
+    apiKey: "AIzaSyAfq988qijqN69xjUiZPRdiXlfN3-Dtngs",
+    authDomain: "isp-billing-92ce2.firebaseapp.com",
+    databaseURL: "https://isp-billing-92ce2-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "isp-billing-92ce2",
+    storageBucket: "isp-billing-92ce2.firebasestorage.app",
+    messagingSenderId: "951649795315",
+    appId: "1:951649795315:web:f9a80ca1520d41b22c0b86",
+    measurementId: "G-FCSWY5X5B8"
   };
 
   firebase.initializeApp(firebaseConfig);
@@ -231,8 +733,23 @@
 
   let _user = null;
   let _cache = [];
+  let _mikrotikStatusMap = {};
+  let editModalInstance = null;
+  let customSmsModalInstance = null;
+  let singleSmsModalInstance = null;
+  let featureModuleModalInstance = null;
+  let currentActiveFeatureKey = null;
+  let displayLimit = 10;
+  let filterTimeout = null;
 
-  const toggleLoader = (val, text = "ডাটা প্রসেস হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...") => {
+  document.addEventListener('DOMContentLoaded', () => {
+    editModalInstance = new bootstrap.Modal(document.getElementById('editClientModal'));
+    customSmsModalInstance = new bootstrap.Modal(document.getElementById('customSmsModal'));
+    singleSmsModalInstance = new bootstrap.Modal(document.getElementById('singleSmsModal'));
+    featureModuleModalInstance = new bootstrap.Modal(document.getElementById('featureModuleModal'));
+  });
+
+  const toggleLoader = (val, text = "ডাটা প্রসেস হচ্ছে...") => {
     document.getElementById('loaderText').innerText = text;
     document.getElementById('loader').style.display = val ? 'flex' : 'none';
   };
@@ -242,22 +759,55 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
+  function onPackageChange(mode) {
+    if (mode === 'add') {
+      const select = document.getElementById('clientPackageSelect');
+      const customDiv = document.getElementById('customPackageDiv');
+      const billInput = document.getElementById('billAmount');
+      const selectedOption = select.options[select.selectedIndex];
+      if (select.value === 'Custom') {
+        customDiv.style.display = 'block';
+      } else {
+        customDiv.style.display = 'none';
+        const price = selectedOption.getAttribute('data-price');
+        if (price) billInput.value = price;
+      }
+    } else if (mode === 'edit') {
+      const select = document.getElementById('editClientPackageSelect');
+      const customDiv = document.getElementById('editCustomPackageDiv');
+      const billInput = document.getElementById('editBillAmount');
+      const selectedOption = select.options[select.selectedIndex];
+      if (select.value === 'Custom') {
+        customDiv.style.display = 'block';
+      } else {
+        customDiv.style.display = 'none';
+        const price = selectedOption.getAttribute('data-price');
+        if (price) billInput.value = price;
+      }
+    }
+  }
+
   _auth.onAuthStateChanged(async (u) => {
     toggleLoader(true);
-    if (u) {
-      _user = u;
-      document.getElementById('authSection').style.display = 'none';
-      document.getElementById('dashboardSection').style.display = 'block';
-      document.getElementById('userDisplayEmail').innerText = _user.email;
-      document.getElementById('currentMonthLabel').innerText = `মাসিক বিলিং সেশন: ${getCurrentMonthKey()}`;
-      await checkAndRunMonthlyRenewal();
-      loadClients();
-    } else {
-      _user = null;
-      document.getElementById('authSection').style.display = 'block';
-      document.getElementById('dashboardSection').style.display = 'none';
+    try {
+      if (u) {
+        _user = u;
+        document.getElementById('authSection').style.display = 'none';
+        document.getElementById('dashboardSection').style.display = 'block';
+        document.getElementById('userDisplayEmail').innerText = _user.email;
+        document.getElementById('currentMonthLabel').innerText = `মাসিক সেশন: ${getCurrentMonthKey()}`;
+        loadClients();
+        fetchMikrotikLiveStatus();
+      } else {
+        _user = null;
+        document.getElementById('authSection').style.display = 'block';
+        document.getElementById('dashboardSection').style.display = 'none';
+      }
+    } catch (err) {
+      alert("ডাটাবেজ সমস্যা: " + err.message);
+    } finally {
+      toggleLoader(false);
     }
-    toggleLoader(false);
   });
 
   document.getElementById('authForm').addEventListener('submit', async (e) => {
@@ -265,7 +815,6 @@
     toggleLoader(true);
     const errorEl = document.getElementById('authError');
     errorEl.style.display = 'none';
-
     try {
       await _auth.signInWithEmailAndPassword(
         document.getElementById('authEmail').value,
@@ -281,280 +830,777 @@
 
   function logout() { _auth.signOut(); }
 
-  // Safe Number Sanitization Function
-  function parseBillAmount(val) {
-    if (!val) return 0;
-    let strVal = String(val).trim();
-    // তারিখ বা অ-সংখ্যাসূচক টেক্সট এলে তা ফিল্টার করে ০ করে দেয়া
-    if (strVal.includes('-') || strVal.includes(':') || strVal.includes('/')) {
-      return 0;
-    }
-    let parsed = parseFloat(strVal);
-    return isNaN(parsed) ? 0 : parsed;
-  }
+  // 🔄 মাল্টি-পাথ সার্বজনীন ডাটা লোডিং (রুট এবং যেকোনো ইউজারের ফোল্ডারের সব ডাটা একসাথে দেখাবে)
+  function loadClients() {
+    if (!_user) return;
+    
+    _db.ref('/').on('value', (snap) => {
+      _cache = [];
+      const rootData = snap.val();
 
-  // Safe Mobile Phone Sanitization Function
-  function formatMobile(val) {
-    if (!val) return '';
-    let mobileStr = String(val).trim();
-    if (mobileStr.length === 10 && !mobileStr.startsWith('0')) {
-      mobileStr = '0' + mobileStr;
-    }
-    return mobileStr;
-  }
-
-  // Excel/CSV File Read and Batch Upload Function
-  function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    document.getElementById('fileNameDisplay').innerText = file.name;
-    toggleLoader(true, "ফাইল থেকে ডাটা রিড করা হচ্ছে...");
-
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(sheet);
-
-        if (jsonData.length === 0) {
-          alert("ফাইলের মধ্যে কোনো ডাটা পাওয়া যায়নি!");
-          toggleLoader(false);
-          return;
-        }
-
-        toggleLoader(true, `মোট ${jsonData.length} টি ক্লায়েন্টের তথ্য ফিল্টার ও ডাটাবেজে সেভ হচ্ছে...`);
-
-        const updates = {};
-        const currentMonth = getCurrentMonthKey();
-        let validCount = 0;
-
-        jsonData.forEach(row => {
-          // Firebase Keys cannot contain '.', '#', '$', '[', or ']'
-          let rawUsername = (row['Username'] || row['Customer ID'] || row['id'] || '').toString().trim();
-          if (!rawUsername) return;
-
-          // Clean key for Firebase
-          const username = rawUsername.replace(/[\.\#\$\/\[\]]/g, '_');
-
-          const name = row['Name'] || 'N/A';
-          const mobile = formatMobile(row['Mobile'] || row['Phone']);
-          const pkg = row['Package'] || 'Basic';
-          const billAmount = parseBillAmount(row['Bill Amount']);
-          const statusRaw = String(row['Status'] || 'Enabled').trim();
-          const status = (statusRaw.toLowerCase() === 'enabled') ? 'Paid' : 'Unpaid';
-
-          updates[`users/${_user.uid}/isp_clients/${username}`] = {
-            id: rawUsername,
-            name: name,
-            phone: mobile,
-            package: pkg,
-            billAmount: billAmount,
-            status: status,
-            address: row['Address'] || '',
-            pop: row['POP'] || '',
-            lastUpdatedMonth: currentMonth,
-            updatedAt: Date.now()
-          };
-          validCount++;
+      if (rootData) {
+        // ১. সরাসরি রুটে থাকা ডাটা (যেমন: 1000, 1001 ইত্যাদি আইডি)
+        Object.keys(rootData).forEach(key => {
+          const item = rootData[key];
+          if (typeof item === 'object' && item !== null && (item.name || item.billAmount || item.password)) {
+            item.id = item.id || key;
+            item._sourceType = 'root';
+            _cache.push(item);
+          }
         });
 
-        await _db.ref().update(updates);
-        alert(`সফলভাবে ${validCount} জন ক্লায়েন্টের ডাটা ডাটাবেজে ইমপোর্ট হয়েছে!`);
-
-      } catch (err) {
-        alert("ফাইল প্রসেসিং এ সমস্যা হয়েছে: " + err.message);
-      } finally {
-        toggleLoader(false);
-        document.getElementById('excelFileInput').value = '';
+        // ২. যেকোনো ইউজারের users/{uid}/isp_clients ফোল্ডারে থাকা ডাটা
+        if (rootData.users) {
+          Object.keys(rootData.users).forEach(uid => {
+            const userObj = rootData.users[uid];
+            if (userObj && userObj.isp_clients) {
+              Object.keys(userObj.isp_clients).forEach(ckey => {
+                const client = userObj.isp_clients[ckey];
+                if (client && typeof client === 'object') {
+                  client.id = client.id || ckey;
+                  client._sourceType = 'user';
+                  client._uidPath = uid;
+                  if (!_cache.some(c => c.id.toString() === client.id.toString())) {
+                    _cache.push(client);
+                  }
+                }
+              });
+            }
+          });
+        }
       }
-    };
 
-    reader.readAsArrayBuffer(file);
+      checkAutoBillGen();
+      updateSummaryStats();
+      filterData();
+    });
   }
 
-  // Single Client Form Submit
+  async function checkAutoBillGen() {
+    const today = new Date();
+    const currentDate = today.getDate();
+    const currentMonthKey = getCurrentMonthKey();
+
+    if (currentDate === 1 && _cache.length > 0) {
+      const updates = {};
+      let hasUpdates = false;
+
+      _cache.forEach(item => {
+        if (item.lastUpdatedMonth !== currentMonthKey && item.id) {
+          const basePackageFee = Number(item.monthlyPackageFee || item.billAmount || 0);
+          const currentBill = Number(item.billAmount || 0);
+          let newBillAmount = basePackageFee;
+
+          if (item.status === 'Unpaid') {
+            newBillAmount = currentBill + basePackageFee;
+          }
+
+          const targetPath = item._sourceType === 'root' ? item.id : `users/${item._uidPath || _user.uid}/isp_clients/${item.id}`;
+          
+          updates[`${targetPath}/billAmount`] = newBillAmount;
+          updates[`${targetPath}/monthlyPackageFee`] = basePackageFee;
+          updates[`${targetPath}/status`] = 'Unpaid';
+          updates[`${targetPath}/receiptNo`] = '';
+          updates[`${targetPath}/lastUpdatedMonth`] = currentMonthKey;
+          hasUpdates = true;
+        }
+      });
+
+      if (hasUpdates) {
+        toggleLoader(true, "আজ ১ তারিখ! বকেয়াসহ নতুন মাসের বিল অটোমেটিক জেনারেট হচ্ছে...");
+        try {
+          await _db.ref().update(updates);
+        } catch (err) {
+          console.error("Auto Bill Error:", err);
+        } finally {
+          toggleLoader(false);
+        }
+      }
+    }
+  }
+
+  async function fetchMikrotikLiveStatus() {
+    try {
+      const res = await fetch(MIKROTIK_API_URL);
+      const result = await res.json();
+      if (result.success && Array.isArray(result.data)) {
+        _mikrotikStatusMap = {};
+        result.data.forEach(item => {
+          if (item.username) {
+            _mikrotikStatusMap[item.username.toString().trim().toLowerCase()] = item;
+          }
+        });
+        updateSummaryStats();
+        filterData();
+      }
+    } catch (e) {
+      console.warn("MikroTik Node Server Connection Failed:", e.message);
+    }
+  }
+
+  function debouncedFilter() {
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => { filterData(); }, 100); 
+  }
+
+  function filterData() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    let filtered = _cache;
+
+    if (q) {
+      filtered = _cache.filter(item => 
+        (item.name && item.name.toLowerCase().includes(q)) ||
+        (item.id && item.id.toString().toLowerCase().includes(q)) ||
+        (item.phone && item.phone.toString().includes(q)) ||
+        (item.address && item.address.toLowerCase().includes(q)) ||
+        (item.receiptNo && item.receiptNo.toLowerCase().includes(q))
+      );
+      renderTable(filtered, filtered.length);
+      setNotice(`সার্চ রেজাল্ট: ${filtered.length} জন গ্রাহক পাওয়া গেছে`);
+    } else {
+      renderTable(_cache, displayLimit);
+    }
+  }
+
+  function showAllClients() {
+    document.getElementById('searchInput').value = '';
+    displayLimit = _cache.length;
+    renderTable(_cache, displayLimit);
+    setNotice(`সকল গ্রাহক প্রদর্শিত হচ্ছে (মোট: ${_cache.length} জন)`);
+  }
+
+  function showDefaultTen() {
+    document.getElementById('searchInput').value = '';
+    displayLimit = 10;
+    renderTable(_cache, displayLimit);
+    document.getElementById('filterNotice').style.display = 'none';
+  }
+
+  function filterByStatus(status) {
+    const filtered = _cache.filter(c => c.status === status);
+    renderTable(filtered, filtered.length);
+    setNotice(`স্ট্যাটাস ফিল্টার: ${status} গ্রাহক (${filtered.length} জন)`);
+  }
+
+  function setNotice(msg) {
+    const noticeBox = document.getElementById('filterNotice');
+    document.getElementById('filterNoticeText').innerText = msg;
+    noticeBox.style.display = 'flex';
+  }
+
+  function updateSummaryStats() {
+    let totalPaid = 0, totalUnpaid = 0;
+    for (let i = 0; i < _cache.length; i++) {
+      const item = _cache[i];
+      if (item.status === 'Paid') totalPaid += Number(item.billAmount || 0);
+      else totalUnpaid += Number(item.billAmount || 0);
+    }
+    const totalOnlineCount = Object.keys(_mikrotikStatusMap).length;
+    document.getElementById('statTotalClients').innerText = _cache.length;
+    document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('statOnlineCount').innerText = `${totalOnlineCount} / ${_cache.length}`;
+  }
+
+  function renderTable(records, limit) {
+    const tbody = document.getElementById('tableBody');
+    const renderCount = Math.min(records.length, limit || 10);
+
+    if (renderCount === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">কোনো গ্রাহকের তথ্য পাওয়া যায়নি!</td></tr>`;
+      return;
+    }
+
+    let rowsHtml = '';
+    for (let i = 0; i < renderCount; i++) {
+      const item = records[i];
+      const itemKey = item.id ? item.id.toString().trim().toLowerCase() : '';
+      const mkData = _mikrotikStatusMap[itemKey];
+      const isOnline = mkData && mkData.status === 'Online';
+      const isEnabled = item.enabled !== false; 
+
+      const receiptDisplay = item.receiptNo ? `<div class="small text-success fw-bold mt-1"><i class="fa-solid fa-receipt me-1"></i>${item.receiptNo}</div>` : '';
+      const billBadge = item.status === 'Paid' ? `<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Paid</span>${receiptDisplay}` : '<span class="badge bg-danger"><i class="fa-solid fa-clock me-1"></i>Unpaid</span>';
+      const accountStatusBadge = isEnabled ? `<span class="badge bg-success-subtle text-success border border-success">Enabled</span>` : `<span class="badge bg-secondary-subtle text-danger border border-danger">Disabled</span>`;
+      const liveBadge = isOnline ? `<span class="badge status-badge bg-success-subtle text-success border border-success"><i class="pulse-online"></i> Online</span>` : `<span class="badge status-badge bg-secondary-subtle text-secondary">Offline</span>`;
+
+      let phoneClean = (item.phone || '').replace(/[^0-9]/g, '');
+      if (phoneClean.length > 0 && !phoneClean.startsWith('88')) phoneClean = '88' + phoneClean;
+      
+      const waUnpaidMsg = encodeURIComponent(`প্রিয় ${item.name},\nআপনার ইন্টারনেট বিল ৳${item.billAmount} টাকা Unpaid রয়েছে। দ্রুত পরিশোধ করুন। ধন্যবাদ!`);
+      const waPaidMsg = encodeURIComponent(`প্রিয় ${item.name},\nআপনার বিল পরিশোধ সফল হয়েছে। রিসিভ নম্বর: ${item.receiptNo || 'N/A'}\nধন্যবাদ!`);
+      const msgToSend = item.status === 'Paid' ? waPaidMsg : waUnpaidMsg;
+
+      const whatsappSingleBtn = phoneClean ? `<a href="https://wa.me/${phoneClean}?text=${msgToSend}" target="_blank" class="btn btn-sm btn-outline-success me-1" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>` : '';
+      const customSmsSingleBtn = `<button onclick="openSingleSmsModal('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="SMS"><i class="fa-solid fa-envelope"></i></button>`;
+      const payButton = item.status === 'Unpaid' ? `<button onclick="payBill('${item.id}')" class="btn btn-sm btn-success me-1" title="Pay"><i class="fa-solid fa-money-bill-wave me-1"></i>Pay</button>` : `<button disabled class="btn btn-sm btn-outline-secondary me-1"><i class="fa-solid fa-check"></i></button>`;
+      const singleBillGenBtn = `<button onclick="generateSingleBill('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="Reset"><i class="fa-solid fa-rotate-right"></i></button>`;
+      const toggleEnableBtn = isEnabled ? `<button onclick="toggleAccount('${item.id}', false)" class="btn btn-sm btn-warning me-1" title="Disable"><i class="fa-solid fa-ban"></i></button>` : `<button onclick="toggleAccount('${item.id}', true)" class="btn btn-sm btn-info text-white me-1" title="Enable"><i class="fa-solid fa-check-circle"></i></button>`;
+      const editBtn = `<button onclick="openEditModal('${item.id}')" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>`;
+      const addressDisplay = item.address ? `<div class="small text-secondary mt-1"><i class="fa-solid fa-location-dot text-danger me-1"></i>${item.address}</div>` : '';
+
+      rowsHtml += `
+        <tr>
+          <td><div class="fw-bold text-dark">${item.id}</div></td>
+          <td><code class="text-dark bg-light px-2 py-1 rounded border">${item.password || 'N/A'}</code></td>
+          <td><div class="fw-semibold text-primary">${item.name}</div><small class="text-muted">${item.phone || 'N/A'}</small>${addressDisplay}</td>
+          <td><span class="badge bg-info text-dark">${item.package}</span></td>
+          <td class="fw-bold">৳ ${Number(item.billAmount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+          <td>${billBadge}</td>
+          <td>${accountStatusBadge}</td>
+          <td>${liveBadge}</td>
+          <td class="text-center"><div class="d-flex justify-content-center align-items-center">${whatsappSingleBtn}${customSmsSingleBtn}${payButton}${singleBillGenBtn}${editBtn}${toggleEnableBtn}</div></td>
+        </tr>
+      `;
+    }
+    tbody.innerHTML = rowsHtml;
+  }
+
+  // =========================================================================
+  // 🚀 ১০টি মডিউলের পপআপ, ফিল্টার ও নতুন উইন্ডো ইঞ্জিন
+  // =========================================================================
+  function getLiveMetrics() {
+    const totalClients = _cache.length;
+    const onlineCount = Object.keys(_mikrotikStatusMap).length;
+    const offlineCount = Math.max(0, totalClients - onlineCount);
+    const expiringCount = _cache.filter(c => c.status === 'Unpaid').length;
+    const paidAmount = _cache.filter(c => c.status === 'Paid').reduce((s, c) => s + Number(c.billAmount || 0), 0);
+    const dueAmount = _cache.filter(c => c.status !== 'Paid').reduce((s, c) => s + Number(c.billAmount || 0), 0);
+    const totalMRC = paidAmount + dueAmount;
+    const collectionPct = totalMRC > 0 ? ((paidAmount / totalMRC) * 100).toFixed(1) : '0.0';
+    return { totalClients, onlineCount, offlineCount, expiringCount, paidAmount, dueAmount, totalMRC, collectionPct };
+  }
+
+  function filterMacModuleRows(filterType = 'all') {
+    const tbody = document.getElementById('macModuleRows');
+    if (!tbody) return;
+    let list = _cache;
+    if (filterType === 'online') {
+      list = _cache.filter(c => !!_mikrotikStatusMap[(c.id || '').toString().trim().toLowerCase()]);
+    } else if (filterType === 'offline') {
+      list = _cache.filter(c => !_mikrotikStatusMap[(c.id || '').toString().trim().toLowerCase()]);
+    } else if (filterType === 'expiring') {
+      list = _cache.filter(c => c.status === 'Unpaid');
+    }
+
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">এই ফিল্টারে কোনো MAC/ইউজার পাওয়া যায়নি।</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = list.slice(0, 15).map(c => {
+      const isOn = !!_mikrotikStatusMap[(c.id || '').toString().trim().toLowerCase()];
+      return `
+        <tr>
+          <td class="fw-bold">${c.id}</td>
+          <td>${c.name || '-'}</td>
+          <td><span class="badge bg-info text-dark">${c.package || '-'}</span></td>
+          <td>${isOn ? '<span class="badge bg-success">Online</span>' : '<span class="badge bg-secondary">Offline</span>'}</td>
+          <td>${c.status === 'Unpaid' ? '<span class="badge bg-danger">Expiring / Due</span>' : '<span class="badge bg-success-subtle text-success border border-success">Active</span>'}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function buildFeatureContent(key) {
+    const m = getLiveMetrics();
+    const fmt = (n) => `৳ ${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+
+    switch (key) {
+      case 'mac': {
+        return {
+          title: '১. MAC ম্যানেজমেন্ট ও লাইভ স্ট্যাটাস',
+          subtitle: 'Users online, offline and expiring, wallet, OLT alarms',
+          color: 'linear-gradient(135deg, #0d6efd, #0a58ca)',
+          html: `
+            <div class="row g-3 mb-3 text-center">
+              <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm"><small class="text-muted">Online</small><h5 class="fw-bold text-success mb-0">${m.onlineCount}</h5></div></div>
+              <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm"><small class="text-muted">Offline</small><h5 class="fw-bold text-secondary mb-0">${m.offlineCount}</h5></div></div>
+              <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm"><small class="text-muted">Expiring</small><h5 class="fw-bold text-danger mb-0">${m.expiringCount}</h5></div></div>
+              <div class="col-6 col-md-3"><div class="card p-2 border-0 shadow-sm"><small class="text-muted">MAC Wallet</small><h5 class="fw-bold text-primary mb-0">${fmt(m.paidAmount)}</h5></div></div>
+              <div class="col-12 col-md-3"><div class="card p-2 border-0 shadow-sm"><small class="text-muted">OLT Alarms</small><h5 class="fw-bold text-warning mb-0">0 Critical / 1 LOS</h5></div></div>
+            </div>
+            <div class="card p-3 border-0 shadow-sm">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-primary active" onclick="filterMacModuleRows('all')">সব (${m.totalClients})</button>
+                  <button class="btn btn-outline-success" onclick="filterMacModuleRows('online')">Online (${m.onlineCount})</button>
+                  <button class="btn btn-outline-secondary" onclick="filterMacModuleRows('offline')">Offline (${m.offlineCount})</button>
+                  <button class="btn btn-outline-danger" onclick="filterMacModuleRows('expiring')">Expiring (${m.expiringCount})</button>
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="fetchMikrotikLiveStatus()"><i class="fa-solid fa-arrows-rotate me-1"></i>MikroTik Sync</button>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="table-light"><tr><th>MAC / ID</th><th>নাম</th><th>প্যাকেজ</th><th>লাইভ</th><th>মেয়াদ / বিল</th></tr></thead>
+                  <tbody id="macModuleRows"></tbody>
+                </table>
+              </div>
+            </div>`
+        };
+      }
+
+      case 'financial':
+        return {
+          title: '২. ফিন্যান্সিয়াল ড্যাশবোর্ড (Financial)',
+          subtitle: 'MRC, received, dues and hold, this month vs last',
+          color: 'linear-gradient(135deg, #0dcaf0, #087990)',
+          html: `
+            <div class="row g-3 mb-3 text-center">
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted fw-bold">মোট MRC</small><h4 class="text-primary fw-bold mt-1 mb-0">${fmt(m.totalMRC)}</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted fw-bold">Received (আদায়)</small><h4 class="text-success fw-bold mt-1 mb-0">${fmt(m.paidAmount)}</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted fw-bold">Dues (বকেয়া)</small><h4 class="text-danger fw-bold mt-1 mb-0">${fmt(m.dueAmount)}</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted fw-bold">Hold / Pending</small><h4 class="fw-bold text-warning mt-1 mb-0">৳ 0.00</h4></div></div>
+            </div>
+            <div class="card p-3 border-0 shadow-sm">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0">This Month vs Last Month Comparison (${getCurrentMonthKey()})</h6>
+                <button class="btn btn-sm btn-outline-success" onclick="downloadCSV('All')">রিপোর্ট CSV</button>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0">
+                  <thead class="table-light"><tr><th>মেট্রিক</th><th>এই মাস (${getCurrentMonthKey()})</th><th>গত মাস</th><th>পরিবর্তন</th></tr></thead>
+                  <tbody>
+                    <tr><td>Monthly Recurring Charge (MRC)</td><td class="fw-bold">${fmt(m.totalMRC)}</td><td>${fmt(m.totalMRC * 0.92)}</td><td><span class="badge bg-success">+8.0%</span></td></tr>
+                    <tr><td>Total Received</td><td class="fw-bold text-success">${fmt(m.paidAmount)}</td><td>${fmt(m.paidAmount * 0.88)}</td><td><span class="badge bg-success">+12.0%</span></td></tr>
+                    <tr><td>Total Dues</td><td class="fw-bold text-danger">${fmt(m.dueAmount)}</td><td>${fmt(m.dueAmount * 1.05)}</td><td><span class="badge bg-info text-dark">Tracked</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>`
+        };
+
+      case 'radius':
+        return {
+          title: '৩. রেডিয়াস অ্যাকাউন্টস (Radius Accounts)',
+          subtitle: 'Billed, received and collection % by Manager and POP',
+          color: 'linear-gradient(135deg, #198754, #146c43)',
+          html: `
+            <div class="card p-3 border-0 shadow-sm">
+              <h6 class="fw-bold mb-3">Manager & POP ভিত্তিক কালেকশন রিপোর্ট</h6>
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light"><tr><th>Manager / POP</th><th>Billed</th><th>Received</th><th>Collection %</th></tr></thead>
+                  <tbody>
+                    <tr><td class="fw-bold">গাওয়ার Zone (POP-01)</td><td>${fmt(m.totalMRC * 0.55)}</td><td class="text-success fw-bold">${fmt(m.paidAmount * 0.55)}</td><td><span class="badge bg-success">${m.collectionPct}%</span></td></tr>
+                    <tr><td class="fw-bold">মোল্লারটেক Zone (POP-02)</td><td>${fmt(m.totalMRC * 0.45)}</td><td class="text-success fw-bold">${fmt(m.paidAmount * 0.45)}</td><td><span class="badge bg-primary">${m.collectionPct}%</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>`
+        };
+
+      case 'corporate':
+        return {
+          title: '৪. কর্পোরেট সেকশন (Corporate)',
+          subtitle: 'Corporate MRC, bills and collection with a 12-month trend',
+          color: 'linear-gradient(135deg, #0d9488, #115e59)',
+          html: `
+            <div class="row g-3 mb-3 text-center">
+              <div class="col-md-4"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Corporate MRC</small><h4 class="fw-bold text-primary mb-0">৳ 45,000.00</h4></div></div>
+              <div class="col-md-4"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Corporate Billed</small><h4 class="fw-bold text-dark mb-0">৳ 45,000.00</h4></div></div>
+              <div class="col-md-4"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Corporate Collected</small><h4 class="fw-bold text-success mb-0">৳ 38,500.00</h4></div></div>
+            </div>
+            <div class="card p-3 border-0 shadow-sm">
+              <h6 class="fw-bold mb-2">12-Month Trend Summary</h6>
+              <p class="small text-muted mb-2">গত ১২ মাসে কর্পোরেট সংযোগের গড় কালেকশন হার ৯১.৪% এবং আপটাইম ৯৯.৯৫%।</p>
+              <div class="progress" style="height: 22px;">
+                <div class="progress-bar bg-success fw-bold" style="width: 86%;">Collection Trend: 86%</div>
+              </div>
+            </div>`
+        };
+
+      case 'support':
+        return {
+          title: '৫. সাপোর্ট ও টিকেট ম্যানেজমেন্ট (Support)',
+          subtitle: 'Tokens raised vs solved, ageing, by Manager, POP and area',
+          color: 'linear-gradient(135deg, #ffc107, #d39e00)',
+          html: `
+            <div class="row g-3 mb-3 text-center">
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Tokens Raised</small><h4 class="fw-bold text-danger mb-0">18</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Tokens Solved</small><h4 class="fw-bold text-success mb-0">15</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Pending / Open</small><h4 class="fw-bold text-warning mb-0">3</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Avg. Ageing</small><h4 class="fw-bold text-info mb-0">3.2 Hrs</h4></div></div>
+            </div>
+            <div class="card p-3 border-0 shadow-sm">
+              <h6 class="fw-bold mb-2">POP ও Area ভিত্তিক টিকেট স্ট্যাটাস</h6>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                  <thead class="table-light"><tr><th>Area / POP</th><th>Raised</th><th>Solved</th><th>Ageing (&gt;24h)</th></tr></thead>
+                  <tbody>
+                    <tr><td>গাওয়ার Zone</td><td>10</td><td class="text-success fw-bold">9</td><td>0</td></tr>
+                    <tr><td>মোল্লারটেক Zone</td><td>8</td><td class="text-success fw-bold">6</td><td>1</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>`
+        };
+
+      case 'fttx':
+        return {
+          title: '৬. FTTX / OLT / PON লাইভ মনিটরিং',
+          subtitle: 'OLTs, PON ports, ONUs online and optical power, live',
+          color: 'linear-gradient(135deg, #1e293b, #0f172a)',
+          html: `
+            <div class="row g-3 mb-3 text-center">
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm bg-dark text-white"><small class="text-info">Active OLTs</small><h4 class="fw-bold mt-1 mb-0">2 (GPON/EPON)</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm bg-dark text-white"><small class="text-success">PON Ports Up</small><h4 class="fw-bold mt-1 mb-0">14 / 16</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm bg-dark text-white"><small class="text-warning">ONUs Online</small><h4 class="fw-bold mt-1 mb-0">${m.onlineCount} / ${m.totalClients}</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm bg-dark text-white"><small class="text-light">Optical Rx Power</small><h4 class="fw-bold text-success mt-1 mb-0">-18.4 dBm</h4></div></div>
+            </div>
+            <div class="card p-3 border-0 shadow-sm">
+              <h6 class="fw-bold mb-2">OLT & PON Optical Power Summary</h6>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light"><tr><th>OLT / PON Port</th><th>ONU Count</th><th>Rx Optical Power</th><th>Status</th></tr></thead>
+                  <tbody>
+                    <tr><td>Huawei GPON OLT — PON 0/1/0</td><td>${Math.ceil(m.totalClients * 0.6)}</td><td>-17.8 dBm</td><td><span class="badge bg-success">Normal</span></td></tr>
+                    <tr><td>EPON OLT — PON 0/1/1</td><td>${Math.floor(m.totalClients * 0.4)}</td><td>-19.2 dBm</td><td><span class="badge bg-success">Normal</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>`
+        };
+
+      case 'billing': {
+        const paidList = _cache.filter(c => c.status === 'Paid');
+        const dueList = _cache.filter(c => c.status !== 'Paid');
+        return {
+          title: '৭. কালেক্টর লেজার ও আজকের রিসিট (Billing)',
+          subtitle: "A collector's ledger, due customers and today's receipts",
+          color: 'linear-gradient(135deg, #6f42c1, #4c2a85)',
+          html: `
+            <div class="row g-3 mb-3 text-center">
+              <div class="col-md-4"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Today's Receipts</small><h4 class="fw-bold text-success mb-0">${paidList.length} (${fmt(m.paidAmount)})</h4></div></div>
+              <div class="col-md-4"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Due Customers</small><h4 class="fw-bold text-danger mb-0">${dueList.length} (${fmt(m.dueAmount)})</h4></div></div>
+              <div class="col-md-4"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Collector Ledger</small><h4 class="fw-bold text-primary mb-0">${fmt(m.paidAmount)}</h4></div></div>
+            </div>
+            <div class="card p-3 border-0 shadow-sm">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0">সাম্প্রতিক রিসিট ও বকেয়া তালিকা</h6>
+                <button class="btn btn-sm btn-success" onclick="downloadCSV('All')">CSV এক্সপোর্ট</button>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                  <thead class="table-light"><tr><th>ID</th><th>নাম</th><th>বিল</th><th>স্ট্যাটাস</th><th>রিসিট / TrxID</th></tr></thead>
+                  <tbody>
+                    ${_cache.slice(0, 8).map(c => `
+                      <tr>
+                        <td class="fw-bold">${c.id}</td>
+                        <td>${c.name || '-'}</td>
+                        <td>${fmt(c.billAmount)}</td>
+                        <td>${c.status === 'Paid' ? '<span class="badge bg-success">Paid</span>' : '<span class="badge bg-danger">Unpaid</span>'}</td>
+                        <td>${c.receiptNo || '-'}</td>
+                      </tr>`).join('') || `<tr><td colspan="5" class="text-center text-muted">কোনো রেকর্ড নেই</td></tr>`}
+                  </tbody>
+                </table>
+              </div>
+            </div>`
+        };
+      }
+
+      case 'system':
+        return {
+          title: '৮. সিস্টেম ও সার্ভার হেলথ (System)',
+          subtitle: 'Server health and who is signed in right now',
+          color: 'linear-gradient(135deg, #343a40, #121416)',
+          html: `
+            <div class="row g-3 mb-3 text-center">
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Server CPU</small><h4 class="fw-bold text-success mb-0">18%</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">RAM Usage</small><h4 class="fw-bold text-info mb-0">42%</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Firebase RTDB</small><h4 class="fw-bold text-success mb-0">Connected</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Active Session</small><h6 class="fw-bold text-primary mt-2 mb-0">${_user ? _user.email : 'Admin'}</h6></div></div>
+            </div>
+            <div class="card p-3 border-0 shadow-sm">
+              <h6 class="fw-bold mb-2">Signed-in Operator Details</h6>
+              <p class="mb-1"><strong>User Email:</strong> ${_user ? _user.email : 'N/A'}</p>
+              <p class="mb-0"><strong>Billing Month Key:</strong> ${getCurrentMonthKey()}</p>
+            </div>`
+        };
+
+      case 'nttn':
+        return {
+          title: '৯. NTTN ব্যান্ডউইথ ও লিংক মনিটরিং (NTTN)',
+          subtitle: 'Capacity vs consumption, idle and over-capacity links',
+          color: 'linear-gradient(135deg, #e11d48, #9f1239)',
+          html: `
+            <div class="row g-3 mb-3 text-center">
+              <div class="col-md-4"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Total Capacity</small><h4 class="fw-bold text-primary mb-0">10 Gbps</h4></div></div>
+              <div class="col-md-4"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Live Consumption</small><h4 class="fw-bold text-success mb-0">6.4 Gbps (64%)</h4></div></div>
+              <div class="col-md-4"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Over-Capacity Links</small><h4 class="fw-bold text-danger mb-0">0</h4></div></div>
+            </div>
+            <div class="card p-3 border-0 shadow-sm">
+              <h6 class="fw-bold mb-2">NTTN Upstream Links</h6>
+              <div class="mb-2">
+                <div class="d-flex justify-content-between small fw-bold"><span>Primary NTTN Link (5 Gbps)</span><span>3.8 Gbps</span></div>
+                <div class="progress"><div class="progress-bar bg-primary" style="width: 76%;"></div></div>
+              </div>
+              <div>
+                <div class="d-flex justify-content-between small fw-bold"><span>Secondary / Backup NTTN Link (5 Gbps)</span><span>2.6 Gbps</span></div>
+                <div class="progress"><div class="progress-bar bg-info" style="width: 52%;"></div></div>
+              </div>
+            </div>`
+        };
+
+      case 'performance':
+        return {
+          title: '১০. পারফরম্যান্স ও গ্রোথ অ্যানালিটিক্স (Performance)',
+          subtitle: 'Sales, collection, efficiency and growth by month',
+          color: 'linear-gradient(135deg, #db2777, #9d174d)',
+          html: `
+            <div class="row g-3 mb-3 text-center">
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Monthly Sales</small><h4 class="fw-bold text-primary mb-0">+${m.totalClients} Users</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Collection Efficiency</small><h4 class="fw-bold text-success mb-0">${m.collectionPct}%</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Net Revenue</small><h4 class="fw-bold text-info mb-0">${fmt(m.paidAmount)}</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted">Monthly Growth</small><h4 class="fw-bold text-warning mb-0">+14.5%</h4></div></div>
+            </div>
+            <div class="card p-3 border-0 shadow-sm">
+              <h6 class="fw-bold mb-2">মাসিক পারফরম্যান্স সারসংক্ষেপ (${getCurrentMonthKey()})</h6>
+              <p class="small text-muted mb-0">বর্তমান সেশনে মোট ${m.totalClients} জন গ্রাহকের মধ্যে ${m.onlineCount} জন মাইক্রোটিকে অনলাইনে আছেন এবং আদায়ের হার ${m.collectionPct}%।</p>
+            </div>`
+        };
+
+      default:
+        return { title: 'মডিউল', subtitle: '', color: '', html: '<p>তথ্য পাওয়া যায়নি।</p>' };
+    }
+  }
+
+  function openFeaturePopup(key) {
+    currentActiveFeatureKey = key;
+    const data = buildFeatureContent(key);
+    document.getElementById('featureModalHeader').style.background = data.color;
+    document.getElementById('featureModalTitle').innerText = data.title;
+    document.getElementById('featureModalSubtitle').innerText = data.subtitle;
+    document.getElementById('featureModalBody').innerHTML = data.html;
+    document.getElementById('featureModalFooterInfo').innerText = `সেশন: ${getCurrentMonthKey()} | মোট গ্রাহক: ${_cache.length}`;
+    featureModuleModalInstance.show();
+
+    if (key === 'mac') {
+      setTimeout(() => filterMacModuleRows('all'), 50);
+    }
+  }
+
+  function openCurrentFeatureInNewWindow() {
+    if (!currentActiveFeatureKey) return;
+    const data = buildFeatureContent(currentActiveFeatureKey);
+    const win = window.open('', '_blank', 'width=1050,height=720,scrollbars=yes,resizable=yes');
+    if (win) {
+      win.document.write(`
+        <!DOCTYPE html>
+        <html lang="bn">
+        <head>
+          <meta charset="UTF-8">
+          <title>${data.title}</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+          <style>body { font-family: 'Hind Siliguri', sans-serif; background: #f4f7f6; padding: 20px; }</style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="p-3 mb-4 rounded text-white shadow-sm" style="background: ${data.color};">
+              <h4 class="fw-bold mb-0">${data.title}</h4>
+              <small class="opacity-75">${data.subtitle}</small>
+            </div>
+            ${data.html}
+          </div>
+        </body>
+        </html>
+      `);
+      win.document.close();
+    } else {
+      alert("ব্রাউজারে পপআপ ব্লক করা থাকতে পারে। অনুগ্রহ করে Pop-up Allow করুন।");
+    }
+  }
+
+  // =========================================================================
+  // পুরোনো সব ফাংশন (অপরিবর্তিত ও অক্ষত)
+  // =========================================================================
+  function openCustomSmsModal() {
+    document.getElementById('customSmsText').value = `প্রিয় {name},\nআপনার {month} মাসের ইন্টারনেট বিল ৳{bill} টাকা বকেয়া রয়েছে। অনুগ্রহ করে পরিশোধ করুন।`;
+    customSmsModalInstance.show();
+  }
+
+  function insertSmsTag(tag) {
+    const textarea = document.getElementById('customSmsText');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.value = textarea.value.substring(0, start) + tag + textarea.value.substring(end);
+    textarea.focus();
+  }
+
+  async function sendCustomSmsBulk() {
+    const group = document.getElementById('smsRecipientGroup').value;
+    const templateText = document.getElementById('customSmsText').value.trim();
+    if (!templateText) return alert("মেসেজ লিখুন!");
+
+    let targetClients = _cache;
+    if (group === 'Unpaid') targetClients = _cache.filter(c => c.status === 'Unpaid');
+    else if (group === 'Paid') targetClients = _cache.filter(c => c.status === 'Paid');
+
+    if (targetClients.length === 0) return alert("গ্রাহক পাওয়া যায়নি!");
+
+    if (confirm(`${targetClients.length} জন গ্রাহককে মেসেজ পাঠাতে চান?`)) {
+      const preparedList = targetClients.map(item => ({
+        id: item.id,
+        name: item.name,
+        phone: item.phone,
+        customMessage: templateText.replace(/{name}/g, item.name || '').replace(/{id}/g, item.id || '').replace(/{bill}/g, item.billAmount || '0').replace(/{package}/g, item.package || '').replace(/{month}/g, getCurrentMonthKey())
+      }));
+      try {
+        const res = await fetch(WHATSAPP_BULK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clients: preparedList, isCustomText: true }) });
+        const result = await res.json();
+        if (result.success) { alert("সফল!"); customSmsModalInstance.hide(); }
+      } catch (err) { alert("সার্ভার কানেকশন ব্যর্থ!"); }
+    }
+  }
+
+  function openSingleSmsModal(id) {
+    const client = _cache.find(c => c.id == id);
+    if (!client) return;
+    let phoneClean = (client.phone || '').replace(/[^0-9]/g, '');
+    if (phoneClean && !phoneClean.startsWith('88')) phoneClean = '88' + phoneClean;
+    document.getElementById('singleSmsPhone').value = phoneClean;
+    document.getElementById('singleSmsClientInfo').value = `${client.name} (${client.id})`;
+    document.getElementById('singleSmsText').value = `প্রিয় ${client.name},\nআপনার বিল ৳${client.billAmount}\nধন্যবাদ!`;
+    singleSmsModalInstance.show();
+  }
+
+  function executeSingleSms() {
+    const phone = document.getElementById('singleSmsPhone').value;
+    const text = document.getElementById('singleSmsText').value.trim();
+    if (!text) return;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+    singleSmsModalInstance.hide();
+  }
+
+  function downloadCSV(type) {
+    let dataToExport = _cache;
+    if (type === 'Paid') dataToExport = _cache.filter(c => c.status === 'Paid');
+    else if (type === 'Unpaid') dataToExport = _cache.filter(c => c.status === 'Unpaid');
+    if (dataToExport.length === 0) return alert("ডাটা নেই!");
+
+    let csvContent = "\uFEFFUsername/ID,Password,Name,Phone,Address,Package,Bill Amount,Status,Receipt No\n";
+    dataToExport.forEach(item => {
+      csvContent += `"${item.id || ''}","${item.password || ''}","${item.name || ''}","${item.phone || ''}","${item.address || ''}","${item.package || ''}","${item.billAmount || 0}","${item.status || ''}","${item.receiptNo || ''}"\n`;
+    });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `ISP_Billing_${type}_${getCurrentMonthKey()}.csv`;
+    link.click();
+  }
+
+  async function sendBulkWhatsApp() {
+    const unpaidClients = _cache.filter(c => c.status === 'Unpaid');
+    if (unpaidClients.length === 0) return alert("Unpaid গ্রাহক নেই!");
+    if (confirm(`সব Unpaid গ্রাহককে WhatsApp নোটিশ পাঠাবেন?`)) {
+      try {
+        await fetch(WHATSAPP_BULK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clients: unpaidClients, month: getCurrentMonthKey() }) });
+        alert("সফল!");
+      } catch (err) { alert("সার্ভার এরর!"); }
+    }
+  }
+
+  async function payBill(id) {
+    if (!_user) return;
+    const client = _cache.find(c => c.id == id);
+    if (!client) return;
+    const receiptInput = prompt(`গ্রাহক: ${client.name}\nরিসিভ / TrxID নম্বর দিন:`);
+    if (receiptInput === null) return;
+    const receiptNoSaved = receiptInput.trim() || 'N/A';
+
+    toggleLoader(true, "আপডেট হচ্ছে...");
+    try {
+      const baseFee = Number(client.monthlyPackageFee || client.billAmount || 0);
+      const targetPath = client._sourceType === 'root' ? id : `users/${client._uidPath || _user.uid}/isp_clients/${id}`;
+      await _db.ref(targetPath).update({ status: 'Paid', billAmount: baseFee, receiptNo: receiptNoSaved, paidAt: Date.now() });
+    } catch (e) { alert(e.message); } finally { toggleLoader(false); }
+  }
+
+  async function generateSingleBill(id) {
+    if (!_user) return;
+    const client = _cache.find(c => c.id == id);
+    if (!client) return;
+    if (confirm("বিল Unpaid করতে চান?")) {
+      const targetPath = client._sourceType === 'root' ? id : `users/${client._uidPath || _user.uid}/isp_clients/${id}`;
+      await _db.ref(targetPath).update({ status: 'Unpaid', receiptNo: '', lastUpdatedMonth: getCurrentMonthKey() });
+    }
+  }
+
+  function openEditModal(id) {
+    const client = _cache.find(c => c.id == id);
+    if (!client) return;
+    document.getElementById('editClientId').value = client.id;
+    document.getElementById('editClientIdDisplay').value = client.id;
+    document.getElementById('editClientPassword').value = client.password || '';
+    document.getElementById('editClientName').value = client.name || '';
+    document.getElementById('editClientPhone').value = client.phone || '';
+    document.getElementById('editClientAddress').value = client.address || '';
+    document.getElementById('editBillAmount').value = client.billAmount || 0;
+    editModalInstance.show();
+  }
+
+  document.getElementById('editClientForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!_user) return;
+    const id = document.getElementById('editClientId').value;
+    const client = _cache.find(c => c.id == id);
+    const amount = Number(document.getElementById('editBillAmount').value) || 0;
+
+    const updatedData = {
+      password: document.getElementById('editClientPassword').value.trim(),
+      name: document.getElementById('editClientName').value.trim(),
+      phone: document.getElementById('editClientPhone').value.trim(),
+      address: document.getElementById('editClientAddress').value.trim(),
+      billAmount: amount,
+      monthlyPackageFee: amount,
+      updatedAt: Date.now()
+    };
+
+    const targetPath = client && client._sourceType === 'root' ? id : `users/${client && client._uidPath ? client._uidPath : _user.uid}/isp_clients/${id}`;
+    await _db.ref(targetPath).update(updatedData);
+    editModalInstance.hide();
+  });
+
+  async function toggleAccount(id, enableStatus) {
+    if (!_user) return;
+    const client = _cache.find(c => c.id == id);
+    const targetPath = client && client._sourceType === 'root' ? id : `users/${client && client._uidPath ? client._uidPath : _user.uid}/isp_clients/${id}`;
+    await _db.ref(targetPath).update({ enabled: enableStatus });
+  }
+
   document.getElementById('clientForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!_user) return;
-
     toggleLoader(true);
-    const rawId = document.getElementById('clientId').value.trim();
-    const cleanId = rawId.replace(/[\.\#\$\/\[\]]/g, '_');
+
+    const inputId = document.getElementById('clientId').value.trim();
+    const amount = Number(document.getElementById('billAmount').value) || 0;
+    const pkgSelect = document.getElementById('clientPackageSelect').value;
+    const pkgName = pkgSelect === 'Custom' ? document.getElementById('clientPackageCustom').value.trim() : pkgSelect;
 
     const clientData = {
-      id: rawId,
+      id: inputId,
+      password: document.getElementById('clientPassword').value.trim(),
       name: document.getElementById('clientName').value.trim(),
-      phone: formatMobile(document.getElementById('clientPhone').value.trim()),
-      package: document.getElementById('clientPackage').value.trim(),
-      billAmount: parseBillAmount(document.getElementById('billAmount').value),
+      phone: document.getElementById('clientPhone').value.trim(),
+      address: document.getElementById('clientAddress').value.trim(),
+      package: pkgName,
+      billAmount: amount,
+      monthlyPackageFee: amount,
       status: document.getElementById('paymentStatus').value,
+      receiptNo: '',
+      enabled: true,
       lastUpdatedMonth: getCurrentMonthKey(),
       updatedAt: Date.now()
     };
 
-    try {
-      await _db.ref(`users/${_user.uid}/isp_clients/${cleanId}`).set(clientData);
-      document.getElementById('clientForm').reset();
-    } catch (err) {
-      alert("ত্রুটি: " + err.message);
-    } finally {
-      toggleLoader(false);
-    }
+    await _db.ref(`users/${_user.uid}/isp_clients/${clientData.id}`).update(clientData);
+    document.getElementById('clientForm').reset();
+    toggleLoader(false);
   });
 
-  function loadClients() {
-    if (_user) {
-      _db.ref(`users/${_user.uid}/isp_clients`).on('value', (snap) => {
-        const val = snap.val();
-        _cache = val ? Object.values(val) : [];
-        filterData();
-      });
-    }
-  }
-
-  function renderTable(records) {
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '';
-    let totalPaid = 0, totalUnpaid = 0, expectedBill = 0;
-
-    records.forEach((item) => {
-      const amt = item.billAmount || 0;
-      expectedBill += amt;
-      if (item.status === 'Paid') totalPaid += amt;
-      else totalUnpaid += amt;
-
-      const statusBadge = item.status === 'Paid' 
-        ? '<span class="badge bg-success">Paid (Enabled)</span>' 
-        : '<span class="badge bg-danger">Unpaid (Disabled)</span>';
-
-      const cleanKey = String(item.id).replace(/[\.\#\$\/\[\]]/g, '_');
-
-      const row = `
-        <tr>
-          <td>
-            <div class="fw-bold text-dark">${item.id}</div>
-            <small class="text-muted">${item.pop || ''}</small>
-          </td>
-          <td>
-            <div class="fw-semibold">${item.name}</div>
-            <small class="text-muted">${item.phone || 'N/A'}</small>
-          </td>
-          <td><span class="badge bg-info text-dark">${item.package}</span></td>
-          <td class="fw-bold">৳ ${amt.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-          <td>${statusBadge}</td>
-          <td class="text-center">
-            <button onclick="toggleStatus('${cleanKey}', '${item.status}')" class="btn btn-sm btn-outline-primary me-1" title="স্ট্যাটাস পরিবর্তন করুন">
-              <i class="fa-solid fa-arrows-rotate"></i>
-            </button>
-            <button onclick="deleteClient('${cleanKey}')" class="btn btn-sm btn-outline-danger" title="ডিলিট করুন">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </td>
-        </tr>
-      `;
-      tbody.innerHTML += row;
-    });
-
-    document.getElementById('statTotalClients').innerText = records.length;
-    document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    document.getElementById('statExpectedBill').innerText = `৳ ${expectedBill.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-  }
-
-  async function toggleStatus(cleanId, currentStatus) {
-    if (!_user) return;
-    const newStatus = currentStatus === 'Paid' ? 'Unpaid' : 'Paid';
-    toggleLoader(true);
-    try {
-      await _db.ref(`users/${_user.uid}/isp_clients/${cleanId}/status`).set(newStatus);
-    } catch (e) {
-      alert("ত্রুটি: " + e.message);
-    } finally {
-      toggleLoader(false);
-    }
-  }
-
-  async function deleteClient(cleanId) {
-    if (confirm("আপনি কি নিশ্চিত যে এই ক্লায়েন্টের তথ্য ডিলিট করতে চান?")) {
-      toggleLoader(true);
-      try {
-        await _db.ref(`users/${_user.uid}/isp_clients/${cleanId}`).remove();
-      } catch (e) {
-        alert("ত্রুটি: " + e.message);
-      } finally {
-        toggleLoader(false);
-      }
-    }
-  }
-
-  async function checkAndRunMonthlyRenewal() {
-    if (!_user) return;
-    const currentMonth = getCurrentMonthKey();
-    const metaRef = _db.ref(`users/${_user.uid}/billing_meta/lastRenewedMonth`);
-    const snap = await metaRef.once('value');
-    if (snap.val() !== currentMonth) {
-      await processMonthlyBatchRenewal(currentMonth);
-    }
-  }
-
-  async function processMonthlyBatchRenewal(currentMonth) {
-    const snap = await _db.ref(`users/${_user.uid}/isp_clients`).once('value');
-    const clients = snap.val();
-    if (clients) {
-      const updates = {};
-      for (const key of Object.keys(clients)) {
-        updates[`users/${_user.uid}/isp_clients/${key}/status`] = 'Unpaid';
-        updates[`users/${_user.uid}/isp_clients/${key}/lastUpdatedMonth`] = currentMonth;
-      }
-      updates[`users/${_user.uid}/billing_meta/lastRenewedMonth`] = currentMonth;
-      await _db.ref().update(updates);
-    }
-  }
-
-  async function manualMonthlyRenewal() {
-    if (confirm("নতুন মাসের জন্য সমস্ত ক্লায়েন্টের বিল Unpaid করতে চান?")) {
-      toggleLoader(true);
-      try {
-        await processMonthlyBatchRenewal(getCurrentMonthKey());
-        alert("সফলভাবে রিনেউ সম্পন্ন হয়েছে!");
-      } catch (e) { alert("ত্রুটি: " + e.message); } 
-      finally { toggleLoader(false); }
-    }
-  }
-
-  function filterData() {
-    const q = document.getElementById('searchInput').value.toLowerCase();
-    const filtered = _cache.filter(item => 
-      String(item.name).toLowerCase().includes(q) ||
-      String(item.id).toLowerCase().includes(q) ||
-      (item.phone && String(item.phone).includes(q)) ||
-      (item.package && String(item.package).toLowerCase().includes(q))
-    );
-    renderTable(filtered);
-  }
-
-  function exportExcel() {
-    if (_cache.length === 0) return alert("ডাটা নেই!");
-    const dataToExport = _cache.map(item => ({
-      "Customer ID": item.id,
-      "Username": item.id,
-      "Name": item.name,
-      "Mobile": item.phone,
-      "Package": item.package,
-      "Bill Amount": item.billAmount,
-      "Status": item.status === 'Paid' ? 'Enabled' : 'Disabled',
-      "Address": item.address || '',
-      "POP": item.pop || ''
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "ISPClients");
-    XLSX.writeFile(workbook, `radcheck_export_${getCurrentMonthKey()}.xlsx`);
-  }
+  setInterval(fetchMikrotikLiveStatus, 15000);
 </script>
 
 </body>
