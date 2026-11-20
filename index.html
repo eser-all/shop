@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Permissions-Policy" content="unload=(self)">
   <title>ISP বিলিং ও MikroTik লাইভ মনিটরিং সিস্টেম</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -23,8 +24,7 @@
     .content-wrapper { flex: 1; }
     .header-banner { background: var(--primary-gradient); color: white; padding: 20px 0; border-radius: 0 0 20px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
     .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .stat-card { border-left: 5px solid; cursor: pointer; transition: transform 0.2s; }
-    .stat-card:hover { transform: translateY(-3px); }
+    .stat-card { border-left: 5px solid; }
     .stat-total { border-color: #0d6efd; }
     .stat-paid { border-color: #198754; }
     .stat-unpaid { border-color: #dc3545; }
@@ -49,7 +49,6 @@
       70% { box-shadow: 0 0 0 6px rgba(25, 135, 84, 0); }
       100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
     }
-    .tag-badge { cursor: pointer; user-select: none; }
   </style>
 </head>
 <body>
@@ -103,19 +102,19 @@
     <div class="container-fluid px-md-4">
       <!-- Summary Cards -->
       <div class="row g-3 mb-4 text-center">
-        <div class="col-6 col-lg-3" onclick="showAllClients()">
+        <div class="col-6 col-lg-3">
           <div class="card card-custom p-3 bg-white stat-card stat-total">
             <div class="text-muted small fw-bold">মোট গ্রাহক</div>
             <h4 class="text-primary fw-bold mt-2 mb-0" id="statTotalClients">0</h4>
           </div>
         </div>
-        <div class="col-6 col-lg-3" onclick="filterByStatus('Paid')">
+        <div class="col-6 col-lg-3">
           <div class="card card-custom p-3 bg-white stat-card stat-paid">
             <div class="text-muted small fw-bold">মোট আদায় (Paid)</div>
             <h4 class="text-success fw-bold mt-2 mb-0" id="statTotalPaid">৳ 0.00</h4>
           </div>
         </div>
-        <div class="col-6 col-lg-3" onclick="filterByStatus('Unpaid')">
+        <div class="col-6 col-lg-3">
           <div class="card card-custom p-3 bg-white stat-card stat-unpaid">
             <div class="text-muted small fw-bold">বকেয়া বিল (Unpaid)</div>
             <h4 class="text-danger fw-bold mt-2 mb-0" id="statTotalUnpaid">৳ 0.00</h4>
@@ -131,56 +130,39 @@
 
       <div class="row">
         <!-- Sidebar Controls -->
-        <div class="col-lg-3 mb-4">
-          <div class="card card-custom p-3">
-            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-1 text-primary"></i>নতুন কাস্টমার যুক্ত করুন</h6>
+        <div class="col-lg-4 mb-4">
+          <!-- Add Single Client Form -->
+          <div class="card card-custom p-4">
+            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-2 text-primary"></i>নতুন ক্লায়েন্ট এন্ট্রি</h5>
             <form id="clientForm">
               <div class="mb-2">
-                <label class="form-label fw-semibold small mb-1">Username / ID</label>
-                <input type="text" id="clientId" class="form-control form-control-sm" placeholder="41younus88" required>
+                <label class="form-label fw-semibold small">MikroTik Username / ID</label>
+                <input type="text" id="clientId" class="form-control form-control-sm" placeholder="যেমন: 41younus88" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small mb-1">পাসওয়ার্ড (Password)</label>
-                <input type="text" id="clientPassword" class="form-control form-control-sm" placeholder="123456" required>
+                <label class="form-label fw-semibold small">গ্রাহকের নাম</label>
+                <input type="text" id="clientName" class="form-control form-control-sm" placeholder="যেমন: Younus" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small mb-1">গ্রাহকের নাম</label>
-                <input type="text" id="clientName" class="form-control form-control-sm" placeholder="Younus" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label fw-semibold small mb-1">মোবাইল নম্বর</label>
+                <label class="form-label fw-semibold small">মোবাইল নম্বর</label>
                 <input type="text" id="clientPhone" class="form-control form-control-sm" placeholder="01920060010" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small mb-1">ঠিকানা (Address)</label>
-                <input type="text" id="clientAddress" class="form-control form-control-sm" placeholder="বাসা-১২, রোড-০৫, ঢাকা">
+                <label class="form-label fw-semibold small">প্যাকেজ (Package)</label>
+                <input type="text" id="clientPackage" class="form-control form-control-sm" placeholder="যেমন: SAM_630TK_I_Vat" required>
               </div>
               <div class="mb-2">
-                <label class="form-label fw-semibold small mb-1">প্যাকেজ সিলেক্ট করুন</label>
-                <select id="clientPackageSelect" class="form-select form-select-sm" onchange="onPackageChange('add')">
-                  <option value="SAM_500TK_5Mbps" data-price="500">SAM_500TK_5Mbps (৳500)</option>
-                  <option value="SAM_630TK_I_Vat" data-price="630" selected>SAM_630TK_I_Vat (৳630)</option>
-                  <option value="SAM_800TK_10Mbps" data-price="800">SAM_800TK_10Mbps (৳800)</option>
-                  <option value="SAM_1000TK_15Mbps" data-price="1000">SAM_1000TK_15Mbps (৳1000)</option>
-                  <option value="Custom">Custom / অন্যান্য প্যাকেজ</option>
-                </select>
-              </div>
-              <div class="mb-2" id="customPackageDiv" style="display: none;">
-                <label class="form-label fw-semibold small mb-1">কাস্টম প্যাকেজের নাম</label>
-                <input type="text" id="clientPackageCustom" class="form-control form-control-sm" placeholder="Custom Package Name">
-              </div>
-              <div class="mb-2">
-                <label class="form-label fw-semibold small mb-1">মাসিক বিল (৳)</label>
-                <input type="number" id="billAmount" class="form-control form-control-sm" value="630" min="0" required>
+                <label class="form-label fw-semibold small">মাসিক বিল (৳)</label>
+                <input type="number" id="billAmount" class="form-control form-control-sm" placeholder="630" min="0" required>
               </div>
               <div class="mb-3">
-                <label class="form-label fw-semibold small mb-1">বিলিং স্ট্যাটাস</label>
+                <label class="form-label fw-semibold small">বিলিং স্ট্যাটাস</label>
                 <select id="paymentStatus" class="form-select form-select-sm" required>
                   <option value="Paid">Paid</option>
                   <option value="Unpaid">Unpaid</option>
                 </select>
               </div>
-              <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold shadow-sm py-2">
+              <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
                 <i class="fa-solid fa-cloud-arrow-up me-1"></i> সেভ করুন
               </button>
             </form>
@@ -188,45 +170,15 @@
         </div>
 
         <!-- Table Display Area -->
-        <div class="col-lg-9">
+        <div class="col-lg-8">
           <div class="table-container mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <div class="d-flex align-items-center gap-2">
-                <input type="text" id="searchInput" oninput="debouncedFilter()" class="form-control form-control-sm shadow-sm" style="width: 250px;" placeholder="🔍 ID / নাম / ফোন / ঠিকানা খুঁজুন...">
-                <button onclick="showAllClients()" class="btn btn-sm btn-outline-secondary fw-bold" title="সব গ্রাহক একসাথে দেখুন">
-                  <i class="fa-solid fa-users me-1"></i> সব কাস্টমার
-                </button>
-              </div>
-
-              <div class="d-flex gap-2 flex-wrap">
-                <button onclick="openCustomSmsModal()" class="btn btn-warning btn-sm fw-bold shadow-sm">
-                  <i class="fa-solid fa-envelope me-1"></i> SMS Text Box
-                </button>
-
-                <div class="dropdown">
-                  <button class="btn btn-outline-dark btn-sm fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="fa-solid fa-file-excel me-1 text-success"></i> শিট ডাউনলোড
-                  </button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item fw-semibold text-success" onclick="downloadCSV('Paid')"><i class="fa-solid fa-circle-check me-2"></i>Paid গ্রাহক ডাউনলোড</a></li>
-                    <li><a class="dropdown-item fw-semibold text-danger" onclick="downloadCSV('Unpaid')"><i class="fa-solid fa-circle-xmark me-2"></i>Unpaid গ্রাহক ডাউনলোড</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item fw-semibold" onclick="downloadCSV('All')"><i class="fa-solid fa-list me-2"></i>সকল গ্রাহক ডাউনলোড</a></li>
-                  </ul>
-                </div>
-
-                <button onclick="sendBulkWhatsApp()" class="btn btn-success btn-sm fw-bold">
-                  <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp Bulk
-                </button>
+              <input type="text" id="searchInput" onkeyup="filterData()" class="form-control form-control-sm shadow-sm" style="width: 240px;" placeholder="🔍 খুঁজুন (Username, Phone)...">
+              <div class="d-flex gap-2">
                 <button onclick="fetchMikrotikLiveStatus()" class="btn btn-outline-info btn-sm fw-bold">
-                  <i class="fa-solid fa-arrows-rotate me-1"></i> Sync
+                  <i class="fa-solid fa-arrows-rotate me-1"></i> MikroTik Sync
                 </button>
               </div>
-            </div>
-
-            <div id="filterNotice" class="alert alert-info py-1 px-3 small d-flex justify-content-between align-items-center mb-2" style="display: none;">
-              <span id="filterNoticeText"></span>
-              <button onclick="showDefaultTen()" class="btn btn-sm btn-link p-0 text-decoration-none">ডিফল্ট ১০ জন দেখুন</button>
             </div>
 
             <div class="table-responsive">
@@ -234,8 +186,7 @@
                 <thead class="table-light">
                   <tr>
                     <th>Username / ID</th>
-                    <th>Password</th>
-                    <th>নাম, মোবাইল & ঠিকানা</th>
+                    <th>নাম & ফোন</th>
                     <th>প্যাকেজ</th>
                     <th>বিল</th>
                     <th>বিল স্ট্যাটাস</th>
@@ -254,141 +205,20 @@
   </div>
 </div>
 
-<!-- Edit Client Modal -->
-<div class="modal fade" id="editClientModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-pen me-2"></i>গ্রাহকের তথ্য এডিট করুন</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="editClientForm">
-          <input type="hidden" id="editClientId">
-          <div class="mb-2">
-            <label class="form-label fw-semibold small">Username / ID (পরিবর্তনযোগ্য নয়)</label>
-            <input type="text" id="editClientIdDisplay" class="form-control form-control-sm" readonly disabled>
-          </div>
-          <div class="mb-2">
-            <label class="form-label fw-semibold small">পাসওয়ার্ড (Password)</label>
-            <input type="text" id="editClientPassword" class="form-control form-control-sm" required>
-          </div>
-          <div class="mb-2">
-            <label class="form-label fw-semibold small">গ্রাহকের নাম</label>
-            <input type="text" id="editClientName" class="form-control form-control-sm" required>
-          </div>
-          <div class="mb-2">
-            <label class="form-label fw-semibold small">মোবাইল নম্বর</label>
-            <input type="text" id="editClientPhone" class="form-control form-control-sm" required>
-          </div>
-          <div class="mb-2">
-            <label class="form-label fw-semibold small">ঠিকানা (Address)</label>
-            <input type="text" id="editClientAddress" class="form-control form-control-sm">
-          </div>
-          <div class="mb-2">
-            <label class="form-label fw-semibold small">প্যাকেজ পরিবর্তন করুন</label>
-            <select id="editClientPackageSelect" class="form-select form-select-sm" onchange="onPackageChange('edit')">
-              <option value="SAM_500TK_5Mbps" data-price="500">SAM_500TK_5Mbps (৳500)</option>
-              <option value="SAM_630TK_I_Vat" data-price="630">SAM_630TK_I_Vat (৳630)</option>
-              <option value="SAM_800TK_10Mbps" data-price="800">SAM_800TK_10Mbps (৳800)</option>
-              <option value="SAM_1000TK_15Mbps" data-price="1000">SAM_1000TK_15Mbps (৳1000)</option>
-              <option value="Custom">Custom / অন্যান্য প্যাকেজ</option>
-            </select>
-          </div>
-          <div class="mb-2" id="editCustomPackageDiv" style="display: none;">
-            <label class="form-label fw-semibold small">কাস্টম প্যাকেজ নাম</label>
-            <input type="text" id="editClientPackageCustom" class="form-control form-control-sm">
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold small">মাসিক বিল (৳)</label>
-            <input type="number" id="editBillAmount" class="form-control form-control-sm" min="0" required>
-          </div>
-          <button type="submit" class="btn btn-primary w-100 fw-bold py-2">আপডেট সেভ করুন</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Custom SMS Modal -->
-<div class="modal fade" id="customSmsModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header bg-warning text-dark">
-        <h5 class="modal-title fw-bold"><i class="fa-solid fa-comment-sms me-2"></i>কাস্টম SMS / WhatsApp মেসেজ বক্স</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label fw-semibold">কাদের কাছে মেসেজ পাঠাতে চান?</label>
-          <select id="smsRecipientGroup" class="form-select">
-            <option value="Unpaid">শুধুমাত্র Unpaid গ্রাহকগণ</option>
-            <option value="Paid">শুধুমাত্র Paid গ্রাহকগণ</option>
-            <option value="All">সকল গ্রাহক একসাথে</option>
-          </select>
-        </div>
-        <div class="mb-2">
-          <label class="form-label fw-semibold">মেসেজ লিখুন:</label>
-          <div class="d-flex flex-wrap gap-1 mb-2">
-            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{name}')">{name}</span>
-            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{id}')">{id}</span>
-            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{bill}')">{bill}</span>
-            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{package}')">{package}</span>
-            <span class="badge bg-secondary tag-badge" onclick="insertSmsTag('{month}')">{month}</span>
-          </div>
-          <textarea id="customSmsText" class="form-control" rows="5"></textarea>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">বন্ধ করুন</button>
-        <button type="button" onclick="sendCustomSmsBulk()" class="btn btn-success fw-bold">WhatsApp-এ পাঠান</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Single SMS Modal -->
-<div class="modal fade" id="singleSmsModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title fw-bold"><i class="fa-brands fa-whatsapp text-success me-2"></i>কাস্টম WhatsApp মেসেজ</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="singleSmsPhone">
-        <div class="mb-2">
-          <label class="form-label fw-semibold small">প্রাপক:</label>
-          <input type="text" id="singleSmsClientInfo" class="form-control form-control-sm bg-light" readonly>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold small">মেসেজ:</label>
-          <textarea id="singleSmsText" class="form-control" rows="5"></textarea>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal">বাতিল</button>
-        <button type="button" onclick="executeSingleSms()" class="btn btn-success btn-sm fw-bold">মেসেজ পাঠান</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <footer class="app-footer">
   <div class="container">
     <p class="mb-0 fw-semibold">ISP Billing & MikroTik Live Management System | <span class="text-warning">Developed by Antu</span></p>
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
   const MIKROTIK_API_URL = 'http://localhost:5000/api/mikrotik/users-status';
-  const WHATSAPP_BULK_URL = 'http://localhost:5000/api/whatsapp/send-bulk';
 
+  // Firebase Configuration
   const firebaseConfig = {
     apiKey: "AIzaSyAfq988qijqN69xjUiZPRdiXlfN3-Dtngs",
     authDomain: "isp-billing-92ce2.firebaseapp.com",
@@ -407,17 +237,6 @@
   let _user = null;
   let _cache = [];
   let _mikrotikStatusMap = {};
-  let editModalInstance = null;
-  let customSmsModalInstance = null;
-  let singleSmsModalInstance = null;
-  let displayLimit = 10;
-  let filterTimeout = null;
-
-  document.addEventListener('DOMContentLoaded', () => {
-    editModalInstance = new bootstrap.Modal(document.getElementById('editClientModal'));
-    customSmsModalInstance = new bootstrap.Modal(document.getElementById('customSmsModal'));
-    singleSmsModalInstance = new bootstrap.Modal(document.getElementById('singleSmsModal'));
-  });
 
   const toggleLoader = (val, text = "ডাটা প্রসেস হচ্ছে...") => {
     document.getElementById('loaderText').innerText = text;
@@ -429,34 +248,7 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
-  function onPackageChange(mode) {
-    if (mode === 'add') {
-      const select = document.getElementById('clientPackageSelect');
-      const customDiv = document.getElementById('customPackageDiv');
-      const billInput = document.getElementById('billAmount');
-      const selectedOption = select.options[select.selectedIndex];
-      if (select.value === 'Custom') {
-        customDiv.style.display = 'block';
-      } else {
-        customDiv.style.display = 'none';
-        const price = selectedOption.getAttribute('data-price');
-        if (price) billInput.value = price;
-      }
-    } else if (mode === 'edit') {
-      const select = document.getElementById('editClientPackageSelect');
-      const customDiv = document.getElementById('editCustomPackageDiv');
-      const billInput = document.getElementById('editBillAmount');
-      const selectedOption = select.options[select.selectedIndex];
-      if (select.value === 'Custom') {
-        customDiv.style.display = 'block';
-      } else {
-        customDiv.style.display = 'none';
-        const price = selectedOption.getAttribute('data-price');
-        if (price) billInput.value = price;
-      }
-    }
-  }
-
+  // Auth Listener
   _auth.onAuthStateChanged(async (u) => {
     toggleLoader(true);
     try {
@@ -485,6 +277,7 @@
     toggleLoader(true);
     const errorEl = document.getElementById('authError');
     errorEl.style.display = 'none';
+
     try {
       await _auth.signInWithEmailAndPassword(
         document.getElementById('authEmail').value,
@@ -492,7 +285,9 @@
       );
     } catch (e) {
       errorEl.style.display = 'block';
-      errorEl.innerText = "লগইন তথ্য ভুল হয়েছে!";
+      errorEl.innerText = e.code === 'auth/operation-not-allowed' 
+        ? "Firebase Console-এ Email/Password অপশনটি Enable করুন!" 
+        : "লগইন তথ্য ভুল হয়েছে!";
     } finally {
       toggleLoader(false);
     }
@@ -500,95 +295,18 @@
 
   function logout() { _auth.signOut(); }
 
-  // 🔄 মাল্টি-পাথ সার্বজনীন ডাটা লোডিং (রুট এবং যেকোনো ইউজারের ফোল্ডারের সব ডাটা একসাথে দেখাবে)
+  // Load Firebase Clients Real-time
   function loadClients() {
-    if (!_user) return;
-    
-    _db.ref('/').on('value', (snap) => {
-      _cache = [];
-      const rootData = snap.val();
-
-      if (rootData) {
-        // ১. সরাসরি রুটে থাকা ডাটা (যেমন: 1000, 1001 ইত্যাদি আইডি)
-        Object.keys(rootData).forEach(key => {
-          const item = rootData[key];
-          if (typeof item === 'object' && item !== null && (item.name || item.billAmount || item.password)) {
-            item.id = item.id || key;
-            item._sourceType = 'root';
-            _cache.push(item);
-          }
-        });
-
-        // ২. যেকোনো ইউজারের users/{uid}/isp_clients ফোল্ডারে থাকা ডাটা
-        if (rootData.users) {
-          Object.keys(rootData.users).forEach(uid => {
-            const userObj = rootData.users[uid];
-            if (userObj && userObj.isp_clients) {
-              Object.keys(userObj.isp_clients).forEach(ckey => {
-                const client = userObj.isp_clients[ckey];
-                if (client && typeof client === 'object') {
-                  client.id = client.id || ckey;
-                  client._sourceType = 'user';
-                  client._uidPath = uid;
-                  if (!_cache.some(c => c.id.toString() === client.id.toString())) {
-                    _cache.push(client);
-                  }
-                }
-              });
-            }
-          });
-        }
-      }
-
-      checkAutoBillGen();
-      updateSummaryStats();
-      filterData();
-    });
-  }
-
-  async function checkAutoBillGen() {
-    const today = new Date();
-    const currentDate = today.getDate();
-    const currentMonthKey = getCurrentMonthKey();
-
-    if (currentDate === 1 && _cache.length > 0) {
-      const updates = {};
-      let hasUpdates = false;
-
-      _cache.forEach(item => {
-        if (item.lastUpdatedMonth !== currentMonthKey && item.id) {
-          const basePackageFee = Number(item.monthlyPackageFee || item.billAmount || 0);
-          const currentBill = Number(item.billAmount || 0);
-          let newBillAmount = basePackageFee;
-
-          if (item.status === 'Unpaid') {
-            newBillAmount = currentBill + basePackageFee;
-          }
-
-          const targetPath = item._sourceType === 'root' ? item.id : `users/${item._uidPath || _user.uid}/isp_clients/${item.id}`;
-          
-          updates[`${targetPath}/billAmount`] = newBillAmount;
-          updates[`${targetPath}/monthlyPackageFee`] = basePackageFee;
-          updates[`${targetPath}/status`] = 'Unpaid';
-          updates[`${targetPath}/receiptNo`] = '';
-          updates[`${targetPath}/lastUpdatedMonth`] = currentMonthKey;
-          hasUpdates = true;
-        }
+    if (_user) {
+      _db.ref(`users/${_user.uid}/isp_clients`).on('value', (snap) => {
+        const val = snap.val();
+        _cache = val ? Object.values(val) : [];
+        filterData();
       });
-
-      if (hasUpdates) {
-        toggleLoader(true, "আজ ১ তারিখ! বকেয়াসহ নতুন মাসের বিল অটোমেটিক জেনারেট হচ্ছে...");
-        try {
-          await _db.ref().update(updates);
-        } catch (err) {
-          console.error("Auto Bill Error:", err);
-        } finally {
-          toggleLoader(false);
-        }
-      }
     }
   }
 
+  // Fetch MikroTik Status
   async function fetchMikrotikLiveStatus() {
     try {
       const res = await fetch(MIKROTIK_API_URL);
@@ -600,7 +318,6 @@
             _mikrotikStatusMap[item.username.toString().trim().toLowerCase()] = item;
           }
         });
-        updateSummaryStats();
         filterData();
       }
     } catch (e) {
@@ -608,310 +325,165 @@
     }
   }
 
-  function debouncedFilter() {
-    clearTimeout(filterTimeout);
-    filterTimeout = setTimeout(() => { filterData(); }, 100); 
-  }
-
-  function filterData() {
-    const q = document.getElementById('searchInput').value.trim().toLowerCase();
-    let filtered = _cache;
-
-    if (q) {
-      filtered = _cache.filter(item => 
-        (item.name && item.name.toLowerCase().includes(q)) ||
-        (item.id && item.id.toString().toLowerCase().includes(q)) ||
-        (item.phone && item.phone.toString().includes(q)) ||
-        (item.address && item.address.toLowerCase().includes(q)) ||
-        (item.receiptNo && item.receiptNo.toLowerCase().includes(q))
-      );
-      renderTable(filtered, filtered.length);
-      setNotice(`সার্চ রেজাল্ট: ${filtered.length} জন গ্রাহক পাওয়া গেছে`);
-    } else {
-      renderTable(_cache, displayLimit);
-    }
-  }
-
-  function showAllClients() {
-    document.getElementById('searchInput').value = '';
-    displayLimit = _cache.length;
-    renderTable(_cache, displayLimit);
-    setNotice(`সকল গ্রাহক প্রদর্শিত হচ্ছে (মোট: ${_cache.length} জন)`);
-  }
-
-  function showDefaultTen() {
-    document.getElementById('searchInput').value = '';
-    displayLimit = 10;
-    renderTable(_cache, displayLimit);
-    document.getElementById('filterNotice').style.display = 'none';
-  }
-
-  function filterByStatus(status) {
-    const filtered = _cache.filter(c => c.status === status);
-    renderTable(filtered, filtered.length);
-    setNotice(`স্ট্যাটাস ফিল্টার: ${status} গ্রাহক (${filtered.length} জন)`);
-  }
-
-  function setNotice(msg) {
-    const noticeBox = document.getElementById('filterNotice');
-    document.getElementById('filterNoticeText').innerText = msg;
-    noticeBox.style.display = 'flex';
-  }
-
-  function updateSummaryStats() {
-    let totalPaid = 0, totalUnpaid = 0;
-    for (let i = 0; i < _cache.length; i++) {
-      const item = _cache[i];
-      if (item.status === 'Paid') totalPaid += Number(item.billAmount || 0);
-      else totalUnpaid += Number(item.billAmount || 0);
-    }
-    const totalOnlineCount = Object.keys(_mikrotikStatusMap).length;
-    document.getElementById('statTotalClients').innerText = _cache.length;
-    document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    document.getElementById('statOnlineCount').innerText = `${totalOnlineCount} / ${_cache.length}`;
-  }
-
-  function renderTable(records, limit) {
+  // Render Table
+  function renderTable(records) {
     const tbody = document.getElementById('tableBody');
-    const renderCount = Math.min(records.length, limit || 10);
+    tbody.innerHTML = '';
+    let totalPaid = 0, totalUnpaid = 0;
 
-    if (renderCount === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">কোনো গ্রাহকের তথ্য পাওয়া যায়নি!</td></tr>`;
-      return;
-    }
+    const renderLimit = Math.min(records.length, 200);
 
-    let rowsHtml = '';
-    for (let i = 0; i < renderCount; i++) {
+    for (let i = 0; i < renderLimit; i++) {
       const item = records[i];
+      
       const itemKey = item.id ? item.id.toString().trim().toLowerCase() : '';
       const mkData = _mikrotikStatusMap[itemKey];
       const isOnline = mkData && mkData.status === 'Online';
-      const isEnabled = item.enabled !== false; 
+      const isEnabled = item.enabled !== false; // Default true
 
-      const receiptDisplay = item.receiptNo ? `<div class="small text-success fw-bold mt-1"><i class="fa-solid fa-receipt me-1"></i>${item.receiptNo}</div>` : '';
-      const billBadge = item.status === 'Paid' ? `<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Paid</span>${receiptDisplay}` : '<span class="badge bg-danger"><i class="fa-solid fa-clock me-1"></i>Unpaid</span>';
-      const accountStatusBadge = isEnabled ? `<span class="badge bg-success-subtle text-success border border-success">Enabled</span>` : `<span class="badge bg-secondary-subtle text-danger border border-danger">Disabled</span>`;
-      const liveBadge = isOnline ? `<span class="badge status-badge bg-success-subtle text-success border border-success"><i class="pulse-online"></i> Online</span>` : `<span class="badge status-badge bg-secondary-subtle text-secondary">Offline</span>`;
+      const billBadge = item.status === 'Paid' 
+        ? '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Paid</span>' 
+        : '<span class="badge bg-danger"><i class="fa-solid fa-clock me-1"></i>Unpaid</span>';
 
-      let phoneClean = (item.phone || '').replace(/[^0-9]/g, '');
-      if (phoneClean.length > 0 && !phoneClean.startsWith('88')) phoneClean = '88' + phoneClean;
-      
-      const waUnpaidMsg = encodeURIComponent(`প্রিয় ${item.name},\nআপনার ইন্টারনেট বিল ৳${item.billAmount} টাকা Unpaid রয়েছে। দ্রুত পরিশোধ করুন। ধন্যবাদ!`);
-      const waPaidMsg = encodeURIComponent(`প্রিয় ${item.name},\nআপনার বিল পরিশোধ সফল হয়েছে। রিসিভ নম্বর: ${item.receiptNo || 'N/A'}\nধন্যবাদ!`);
-      const msgToSend = item.status === 'Paid' ? waPaidMsg : waUnpaidMsg;
+      const accountStatusBadge = isEnabled
+        ? `<span class="badge bg-success-subtle text-success border border-success">Enabled</span>`
+        : `<span class="badge bg-secondary-subtle text-danger border border-danger">Disabled</span>`;
 
-      const whatsappSingleBtn = phoneClean ? `<a href="https://wa.me/${phoneClean}?text=${msgToSend}" target="_blank" class="btn btn-sm btn-outline-success me-1" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>` : '';
-      const customSmsSingleBtn = `<button onclick="openSingleSmsModal('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="SMS"><i class="fa-solid fa-envelope"></i></button>`;
-      const payButton = item.status === 'Unpaid' ? `<button onclick="payBill('${item.id}')" class="btn btn-sm btn-success me-1" title="Pay"><i class="fa-solid fa-money-bill-wave me-1"></i>Pay</button>` : `<button disabled class="btn btn-sm btn-outline-secondary me-1"><i class="fa-solid fa-check"></i></button>`;
-      const singleBillGenBtn = `<button onclick="generateSingleBill('${item.id}')" class="btn btn-sm btn-outline-warning me-1" title="Reset"><i class="fa-solid fa-rotate-right"></i></button>`;
-      const toggleEnableBtn = isEnabled ? `<button onclick="toggleAccount('${item.id}', false)" class="btn btn-sm btn-warning me-1" title="Disable"><i class="fa-solid fa-ban"></i></button>` : `<button onclick="toggleAccount('${item.id}', true)" class="btn btn-sm btn-info text-white me-1" title="Enable"><i class="fa-solid fa-check-circle"></i></button>`;
-      const editBtn = `<button onclick="openEditModal('${item.id}')" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>`;
-      const addressDisplay = item.address ? `<div class="small text-secondary mt-1"><i class="fa-solid fa-location-dot text-danger me-1"></i>${item.address}</div>` : '';
+      const liveBadge = isOnline
+        ? `<span class="badge status-badge bg-success-subtle text-success border border-success"><i class="pulse-online"></i> Online</span>`
+        : `<span class="badge status-badge bg-secondary-subtle text-secondary">Offline</span>`;
 
-      rowsHtml += `
+      // Bill Pay Action Button
+      const payButton = item.status === 'Unpaid' 
+        ? `<button onclick="payBill('${item.id}')" class="btn btn-sm btn-success me-1" title="বিল পরিশোধ করুন"><i class="fa-solid fa-money-bill-wave me-1"></i>Pay</button>`
+        : `<button disabled class="btn btn-sm btn-outline-secondary me-1" title="বিল পরিশোধিত"><i class="fa-solid fa-check"></i></button>`;
+
+      // Enable / Disable Action Button
+      const toggleEnableBtn = isEnabled
+        ? `<button onclick="toggleAccount('${item.id}', false)" class="btn btn-sm btn-warning me-1" title="ডিজেবল করুন"><i class="fa-solid fa-ban"></i></button>`
+        : `<button onclick="toggleAccount('${item.id}', true)" class="btn btn-sm btn-info text-white me-1" title="ইনেবল করুন"><i class="fa-solid fa-check-circle"></i></button>`;
+
+      const row = `
         <tr>
-          <td><div class="fw-bold text-dark">${item.id}</div></td>
-          <td><code class="text-dark bg-light px-2 py-1 rounded border">${item.password || 'N/A'}</code></td>
-          <td><div class="fw-semibold text-primary">${item.name}</div><small class="text-muted">${item.phone || 'N/A'}</small>${addressDisplay}</td>
+          <td>
+            <div class="fw-bold text-dark">${item.id}</div>
+            <small class="text-muted">${item.pop || ''}</small>
+          </td>
+          <td>
+            <div class="fw-semibold">${item.name}</div>
+            <small class="text-muted">${item.phone || 'N/A'}</small>
+          </td>
           <td><span class="badge bg-info text-dark">${item.package}</span></td>
           <td class="fw-bold">৳ ${Number(item.billAmount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
           <td>${billBadge}</td>
           <td>${accountStatusBadge}</td>
           <td>${liveBadge}</td>
-          <td class="text-center"><div class="d-flex justify-content-center align-items-center">${whatsappSingleBtn}${customSmsSingleBtn}${payButton}${singleBillGenBtn}${editBtn}${toggleEnableBtn}</div></td>
+          <td class="text-center">
+            <div class="d-flex justify-content-center align-items-center">
+              ${payButton}
+              ${toggleEnableBtn}
+              <button onclick="deleteClient('${item.id}')" class="btn btn-sm btn-outline-danger" title="ডিলিট">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </td>
         </tr>
       `;
+      tbody.innerHTML += row;
     }
-    tbody.innerHTML = rowsHtml;
-  }
 
-  function openCustomSmsModal() {
-    document.getElementById('customSmsText').value = `প্রিয় {name},\nআপনার {month} মাসের ইন্টারনেট বিল ৳{bill} টাকা বকেয়া রয়েছে। অনুগ্রহ করে পরিশোধ করুন।`;
-    customSmsModalInstance.show();
-  }
-
-  function insertSmsTag(tag) {
-    const textarea = document.getElementById('customSmsText');
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    textarea.value = textarea.value.substring(0, start) + tag + textarea.value.substring(end);
-    textarea.focus();
-  }
-
-  async function sendCustomSmsBulk() {
-    const group = document.getElementById('smsRecipientGroup').value;
-    const templateText = document.getElementById('customSmsText').value.trim();
-    if (!templateText) return alert("মেসেজ লিখুন!");
-
-    let targetClients = _cache;
-    if (group === 'Unpaid') targetClients = _cache.filter(c => c.status === 'Unpaid');
-    else if (group === 'Paid') targetClients = _cache.filter(c => c.status === 'Paid');
-
-    if (targetClients.length === 0) return alert("গ্রাহক পাওয়া যায়নি!");
-
-    if (confirm(`${targetClients.length} জন গ্রাহককে মেসেজ পাঠাতে চান?`)) {
-      const preparedList = targetClients.map(item => ({
-        id: item.id,
-        name: item.name,
-        phone: item.phone,
-        customMessage: templateText.replace(/{name}/g, item.name || '').replace(/{id}/g, item.id || '').replace(/{bill}/g, item.billAmount || '0').replace(/{package}/g, item.package || '').replace(/{month}/g, getCurrentMonthKey())
-      }));
-      try {
-        const res = await fetch(WHATSAPP_BULK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clients: preparedList, isCustomText: true }) });
-        const result = await res.json();
-        if (result.success) { alert("সফল!"); customSmsModalInstance.hide(); }
-      } catch (err) { alert("সার্ভার কানেকশন ব্যর্থ!"); }
-    }
-  }
-
-  function openSingleSmsModal(id) {
-    const client = _cache.find(c => c.id == id);
-    if (!client) return;
-    let phoneClean = (client.phone || '').replace(/[^0-9]/g, '');
-    if (phoneClean && !phoneClean.startsWith('88')) phoneClean = '88' + phoneClean;
-    document.getElementById('singleSmsPhone').value = phoneClean;
-    document.getElementById('singleSmsClientInfo').value = `${client.name} (${client.id})`;
-    document.getElementById('singleSmsText').value = `প্রিয় ${client.name},\nআপনার বিল ৳${client.billAmount}\nধন্যবাদ!`;
-    singleSmsModalInstance.show();
-  }
-
-  function executeSingleSms() {
-    const phone = document.getElementById('singleSmsPhone').value;
-    const text = document.getElementById('singleSmsText').value.trim();
-    if (!text) return;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
-    singleSmsModalInstance.hide();
-  }
-
-  function downloadCSV(type) {
-    let dataToExport = _cache;
-    if (type === 'Paid') dataToExport = _cache.filter(c => c.status === 'Paid');
-    else if (type === 'Unpaid') dataToExport = _cache.filter(c => c.status === 'Unpaid');
-    if (dataToExport.length === 0) return alert("ডাটা নেই!");
-
-    let csvContent = "\uFEFFUsername/ID,Password,Name,Phone,Address,Package,Bill Amount,Status,Receipt No\n";
-    dataToExport.forEach(item => {
-      csvContent += `"${item.id || ''}","${item.password || ''}","${item.name || ''}","${item.phone || ''}","${item.address || ''}","${item.package || ''}","${item.billAmount || 0}","${item.status || ''}","${item.receiptNo || ''}"\n`;
+    records.forEach(item => {
+      if (item.status === 'Paid') totalPaid += Number(item.billAmount || 0);
+      else totalUnpaid += Number(item.billAmount || 0);
     });
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `ISP_Billing_${type}_${getCurrentMonthKey()}.csv`;
-    link.click();
+
+    const totalOnlineCount = Object.keys(_mikrotikStatusMap).length;
+
+    document.getElementById('statTotalClients').innerText = records.length;
+    document.getElementById('statTotalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('statTotalUnpaid').innerText = `৳ ${totalUnpaid.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('statOnlineCount').innerText = `${totalOnlineCount} / ${records.length}`;
   }
 
-  async function sendBulkWhatsApp() {
-    const unpaidClients = _cache.filter(c => c.status === 'Unpaid');
-    if (unpaidClients.length === 0) return alert("Unpaid গ্রাহক নেই!");
-    if (confirm(`সব Unpaid গ্রাহককে WhatsApp নোটিশ পাঠাবেন?`)) {
-      try {
-        await fetch(WHATSAPP_BULK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clients: unpaidClients, month: getCurrentMonthKey() }) });
-        alert("সফল!");
-      } catch (err) { alert("সার্ভার এরর!"); }
-    }
-  }
-
+  // Bill Pay Functionality
   async function payBill(id) {
     if (!_user) return;
-    const client = _cache.find(c => c.id == id);
-    if (!client) return;
-    const receiptInput = prompt(`গ্রাহক: ${client.name}\nরিসিভ / TrxID নম্বর দিন:`);
-    if (receiptInput === null) return;
-    const receiptNoSaved = receiptInput.trim() || 'N/A';
-
-    toggleLoader(true, "আপডেট হচ্ছে...");
-    try {
-      const baseFee = Number(client.monthlyPackageFee || client.billAmount || 0);
-      const targetPath = client._sourceType === 'root' ? id : `users/${client._uidPath || _user.uid}/isp_clients/${id}`;
-      await _db.ref(targetPath).update({ status: 'Paid', billAmount: baseFee, receiptNo: receiptNoSaved, paidAt: Date.now() });
-    } catch (e) { alert(e.message); } finally { toggleLoader(false); }
-  }
-
-  async function generateSingleBill(id) {
-    if (!_user) return;
-    const client = _cache.find(c => c.id == id);
-    if (!client) return;
-    if (confirm("বিল Unpaid করতে চান?")) {
-      const targetPath = client._sourceType === 'root' ? id : `users/${client._uidPath || _user.uid}/isp_clients/${id}`;
-      await _db.ref(targetPath).update({ status: 'Unpaid', receiptNo: '', lastUpdatedMonth: getCurrentMonthKey() });
+    if (confirm(`আপনি কি ${id} - এর বিল সংগ্রহ নিশ্চিত করতে চান?`)) {
+      toggleLoader(true, "বিল পরিশোধের তথ্য আপডেট হচ্ছে...");
+      try {
+        await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
+          status: 'Paid',
+          paidAt: Date.now()
+        });
+      } catch (e) { alert("ত্রুটি: " + e.message); } 
+      finally { toggleLoader(false); }
     }
   }
 
-  function openEditModal(id) {
-    const client = _cache.find(c => c.id == id);
-    if (!client) return;
-    document.getElementById('editClientId').value = client.id;
-    document.getElementById('editClientIdDisplay').value = client.id;
-    document.getElementById('editClientPassword').value = client.password || '';
-    document.getElementById('editClientName').value = client.name || '';
-    document.getElementById('editClientPhone').value = client.phone || '';
-    document.getElementById('editClientAddress').value = client.address || '';
-    document.getElementById('editBillAmount').value = client.billAmount || 0;
-    editModalInstance.show();
-  }
-
-  document.getElementById('editClientForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!_user) return;
-    const id = document.getElementById('editClientId').value;
-    const client = _cache.find(c => c.id == id);
-    const amount = Number(document.getElementById('editBillAmount').value) || 0;
-
-    const updatedData = {
-      password: document.getElementById('editClientPassword').value.trim(),
-      name: document.getElementById('editClientName').value.trim(),
-      phone: document.getElementById('editClientPhone').value.trim(),
-      address: document.getElementById('editClientAddress').value.trim(),
-      billAmount: amount,
-      monthlyPackageFee: amount,
-      updatedAt: Date.now()
-    };
-
-    const targetPath = client && client._sourceType === 'root' ? id : `users/${client && client._uidPath ? client._uidPath : _user.uid}/isp_clients/${id}`;
-    await _db.ref(targetPath).update(updatedData);
-    editModalInstance.hide();
-  });
-
+  // Enable / Disable Account Functionality
   async function toggleAccount(id, enableStatus) {
     if (!_user) return;
-    const client = _cache.find(c => c.id == id);
-    const targetPath = client && client._sourceType === 'root' ? id : `users/${client && client._uidPath ? client._uidPath : _user.uid}/isp_clients/${id}`;
-    await _db.ref(targetPath).update({ enabled: enableStatus });
+    const actionText = enableStatus ? "সক্রিয় (Enable)" : "নিষ্ক্রিয় (Disable)";
+    if (confirm(`আপনি কি এই ক্লায়েন্টটি ${actionText} করতে চান?`)) {
+      toggleLoader(true, `অ্যাকাউন্ট ${actionText} করা হচ্ছে...`);
+      try {
+        await _db.ref(`users/${_user.uid}/isp_clients/${id}`).update({ 
+          enabled: enableStatus 
+        });
+      } catch (e) { alert("ত্রুটি: " + e.message); } 
+      finally { toggleLoader(false); }
+    }
   }
 
+  // Form Submit (Single User)
   document.getElementById('clientForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!_user) return;
     toggleLoader(true);
 
-    const inputId = document.getElementById('clientId').value.trim();
-    const amount = Number(document.getElementById('billAmount').value) || 0;
-    const pkgSelect = document.getElementById('clientPackageSelect').value;
-    const pkgName = pkgSelect === 'Custom' ? document.getElementById('clientPackageCustom').value.trim() : pkgSelect;
-
     const clientData = {
-      id: inputId,
-      password: document.getElementById('clientPassword').value.trim(),
+      id: document.getElementById('clientId').value.trim(),
       name: document.getElementById('clientName').value.trim(),
       phone: document.getElementById('clientPhone').value.trim(),
-      address: document.getElementById('clientAddress').value.trim(),
-      package: pkgName,
-      billAmount: amount,
-      monthlyPackageFee: amount,
+      package: document.getElementById('clientPackage').value.trim(),
+      billAmount: Number(parseFloat(document.getElementById('billAmount').value).toFixed(2)) || 0,
       status: document.getElementById('paymentStatus').value,
-      receiptNo: '',
       enabled: true,
       lastUpdatedMonth: getCurrentMonthKey(),
       updatedAt: Date.now()
     };
 
-    // নতুন এন্ট্রি সরাসরি কমন জায়গায় বা নির্দিষ্ট ইউজারের ফোল্ডারে সেভ করার ব্যবস্থা
-    await _db.ref(`users/${_user.uid}/isp_clients/${clientData.id}`).update(clientData);
-    document.getElementById('clientForm').reset();
-    toggleLoader(false);
+    try {
+      await _db.ref(`users/${_user.uid}/isp_clients/${clientData.id}`).update(clientData);
+      document.getElementById('clientForm').reset();
+    } catch (err) {
+      alert("ত্রুটি: " + err.message);
+    } finally {
+      toggleLoader(false);
+    }
   });
 
+  async function deleteClient(id) {
+    if (confirm("ক্লায়েন্টের ডাটা ডিলিট করতে চান?")) {
+      toggleLoader(true);
+      try {
+        await _db.ref(`users/${_user.uid}/isp_clients/${id}`).remove();
+      } catch (e) { alert("ত্রুটি: " + e.message); } 
+      finally { toggleLoader(false); }
+    }
+  }
+
+  function filterData() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = _cache.filter(item => 
+      (item.name && item.name.toLowerCase().includes(q)) ||
+      (item.id && item.id.toLowerCase().includes(q)) ||
+      (item.phone && item.phone.includes(q))
+    );
+    renderTable(filtered);
+  }
+
+  // Auto Refresh MikroTik Status every 15 seconds
   setInterval(fetchMikrotikLiveStatus, 15000);
 </script>
 
