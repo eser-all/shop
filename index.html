@@ -277,7 +277,7 @@
               <div>
                 <div class="module-preview">
                   <div class="d-flex gap-1">
-                    <span class="preview-bar w-50" style="background:#0d9488; opacity:0.65;"></span>
+                    <span class="preview-bar w-50 bg-teal bg-opacity-50" style="background:#0d9488;"></span>
                     <span class="preview-bar w-50"></span>
                   </div>
                   <div class="preview-bar w-100"></div>
@@ -1057,7 +1057,7 @@
   }
 
   // =========================================================================
-  // 🚀 ১০টি মডিউলের পপআপ, ফিল্টার ও নতুন উইন্ডো ইঞ্জিন
+  // 🚀 ১০টি মডিউলের পপআপ ও নতুন উইন্ডো ইঞ্জিন (কোনো পুরোনো ডাটা না হারিয়ে)
   // =========================================================================
   function getLiveMetrics() {
     const totalClients = _cache.length;
@@ -1071,43 +1071,24 @@
     return { totalClients, onlineCount, offlineCount, expiringCount, paidAmount, dueAmount, totalMRC, collectionPct };
   }
 
-  function filterMacModuleRows(filterType = 'all') {
-    const tbody = document.getElementById('macModuleRows');
-    if (!tbody) return;
-    let list = _cache;
-    if (filterType === 'online') {
-      list = _cache.filter(c => !!_mikrotikStatusMap[(c.id || '').toString().trim().toLowerCase()]);
-    } else if (filterType === 'offline') {
-      list = _cache.filter(c => !_mikrotikStatusMap[(c.id || '').toString().trim().toLowerCase()]);
-    } else if (filterType === 'expiring') {
-      list = _cache.filter(c => c.status === 'Unpaid');
-    }
-
-    if (!list.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">এই ফিল্টারে কোনো MAC/ইউজার পাওয়া যায়নি।</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = list.slice(0, 15).map(c => {
-      const isOn = !!_mikrotikStatusMap[(c.id || '').toString().trim().toLowerCase()];
-      return `
-        <tr>
-          <td class="fw-bold">${c.id}</td>
-          <td>${c.name || '-'}</td>
-          <td><span class="badge bg-info text-dark">${c.package || '-'}</span></td>
-          <td>${isOn ? '<span class="badge bg-success">Online</span>' : '<span class="badge bg-secondary">Offline</span>'}</td>
-          <td>${c.status === 'Unpaid' ? '<span class="badge bg-danger">Expiring / Due</span>' : '<span class="badge bg-success-subtle text-success border border-success">Active</span>'}</td>
-        </tr>
-      `;
-    }).join('');
-  }
-
   function buildFeatureContent(key) {
     const m = getLiveMetrics();
     const fmt = (n) => `৳ ${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
     switch (key) {
       case 'mac': {
+        const sampleRows = _cache.slice(0, 8).map(c => {
+          const isOn = !!_mikrotikStatusMap[(c.id || '').toString().trim().toLowerCase()];
+          return `
+            <tr>
+              <td class="fw-bold">${c.id}</td>
+              <td>${c.name || '-'}</td>
+              <td><span class="badge bg-info text-dark">${c.package || '-'}</span></td>
+              <td>${isOn ? '<span class="badge bg-success">Online</span>' : '<span class="badge bg-secondary">Offline</span>'}</td>
+              <td>${c.status === 'Unpaid' ? '<span class="badge bg-danger">Expiring / Due</span>' : '<span class="badge bg-success-subtle text-success border border-success">Active</span>'}</td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="5" class="text-center text-muted">গ্রাহক ডাটা লোড হচ্ছে...</td></tr>`;
+
         return {
           title: '১. MAC ম্যানেজমেন্ট ও লাইভ স্ট্যাটাস',
           subtitle: 'Users online, offline and expiring, wallet, OLT alarms',
@@ -1121,19 +1102,14 @@
               <div class="col-12 col-md-3"><div class="card p-2 border-0 shadow-sm"><small class="text-muted">OLT Alarms</small><h5 class="fw-bold text-warning mb-0">0 Critical / 1 LOS</h5></div></div>
             </div>
             <div class="card p-3 border-0 shadow-sm">
-              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                <div class="btn-group btn-group-sm">
-                  <button class="btn btn-outline-primary active" onclick="filterMacModuleRows('all')">সব (${m.totalClients})</button>
-                  <button class="btn btn-outline-success" onclick="filterMacModuleRows('online')">Online (${m.onlineCount})</button>
-                  <button class="btn btn-outline-secondary" onclick="filterMacModuleRows('offline')">Offline (${m.offlineCount})</button>
-                  <button class="btn btn-outline-danger" onclick="filterMacModuleRows('expiring')">Expiring (${m.expiringCount})</button>
-                </div>
-                <button class="btn btn-sm btn-primary" onclick="fetchMikrotikLiveStatus()"><i class="fa-solid fa-arrows-rotate me-1"></i>MikroTik Sync</button>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0">MAC Users Snapshot</h6>
+                <button class="btn btn-sm btn-outline-primary" onclick="fetchMikrotikLiveStatus()">MikroTik Sync</button>
               </div>
               <div class="table-responsive">
                 <table class="table table-sm table-hover align-middle mb-0">
                   <thead class="table-light"><tr><th>MAC / ID</th><th>নাম</th><th>প্যাকেজ</th><th>লাইভ</th><th>মেয়াদ / বিল</th></tr></thead>
-                  <tbody id="macModuleRows"></tbody>
+                  <tbody>${sampleRows}</tbody>
                 </table>
               </div>
             </div>`
@@ -1150,13 +1126,10 @@
               <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted fw-bold">মোট MRC</small><h4 class="text-primary fw-bold mt-1 mb-0">${fmt(m.totalMRC)}</h4></div></div>
               <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted fw-bold">Received (আদায়)</small><h4 class="text-success fw-bold mt-1 mb-0">${fmt(m.paidAmount)}</h4></div></div>
               <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted fw-bold">Dues (বকেয়া)</small><h4 class="text-danger fw-bold mt-1 mb-0">${fmt(m.dueAmount)}</h4></div></div>
-              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted fw-bold">Hold / Pending</small><h4 class="fw-bold text-warning mt-1 mb-0">৳ 0.00</h4></div></div>
+              <div class="col-6 col-md-3"><div class="card p-3 border-0 shadow-sm"><small class="text-muted fw-bold">Hold / Pending</small><h4 class="text-warning fw-bold mt-1 mb-0">৳ 0.00</h4></div></div>
             </div>
             <div class="card p-3 border-0 shadow-sm">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold mb-0">This Month vs Last Month Comparison (${getCurrentMonthKey()})</h6>
-                <button class="btn btn-sm btn-outline-success" onclick="downloadCSV('All')">রিপোর্ট CSV</button>
-              </div>
+              <h6 class="fw-bold mb-3">This Month vs Last Month Comparison (${getCurrentMonthKey()})</h6>
               <div class="table-responsive">
                 <table class="table table-bordered align-middle mb-0">
                   <thead class="table-light"><tr><th>মেট্রিক</th><th>এই মাস (${getCurrentMonthKey()})</th><th>গত মাস</th><th>পরিবর্তন</th></tr></thead>
@@ -1374,10 +1347,6 @@
     document.getElementById('featureModalBody').innerHTML = data.html;
     document.getElementById('featureModalFooterInfo').innerText = `সেশন: ${getCurrentMonthKey()} | মোট গ্রাহক: ${_cache.length}`;
     featureModuleModalInstance.show();
-
-    if (key === 'mac') {
-      setTimeout(() => filterMacModuleRows('all'), 50);
-    }
   }
 
   function openCurrentFeatureInNewWindow() {
